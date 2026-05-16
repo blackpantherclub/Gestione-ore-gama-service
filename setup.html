@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Setup Admin – Gama Service</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div class="page-sm">
+  <div class="auth-logo">
+    <h1>SETUP<span style="color:var(--text)">ADMIN</span></h1>
+    <p>Esegui una sola volta</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">— Crea account amministratore</div>
+    <p style="font-size:13px;color:var(--muted2);margin-bottom:20px;line-height:1.6;">
+      Questo script crea l'account admin su Firebase.<br>
+      <strong style="color:var(--orange);">Eseguilo una sola volta</strong>, poi elimina questo file dal progetto.
+    </p>
+
+    <div class="alert alert-error" id="err"></div>
+    <div class="alert alert-success" id="ok"></div>
+
+    <button class="btn btn-primary" onclick="creaAdmin()">Crea Admin GamaService</button>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db } from './js/firebase-config.js';
+  import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  window.creaAdmin = async function() {
+    const ADMIN_EMAIL = 'admin@gamaservice.interno';
+    const ADMIN_PASS  = 'GamaService@2026';
+
+    const errEl = document.getElementById('err');
+    const okEl  = document.getElementById('ok');
+    errEl.classList.remove('show');
+    okEl.classList.remove('show');
+
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASS);
+      await setDoc(doc(db, 'utenti', cred.user.uid), {
+        uid: cred.user.uid,
+        nome: 'Gama',
+        cognome: 'Service',
+        nomeCompleto: 'Gama Service',
+        email: ADMIN_EMAIL,
+        username: 'GamaService',
+        ruolo: 'admin',
+        creato: serverTimestamp()
+      });
+
+      okEl.textContent = '✓ Admin creato! Ora puoi eliminare questo file (setup.html) e accedere con GamaService / GamaService@2026';
+      okEl.classList.add('show');
+
+    } catch(e) {
+      let msg = e.message;
+      if (e.code === 'auth/email-already-in-use') msg = 'Admin già creato in precedenza. Puoi eliminare questo file.';
+      errEl.textContent = msg;
+      errEl.classList.add('show');
+    }
+  };
+</script>
+</body>
+</html>

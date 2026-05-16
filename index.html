@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login – Gama Service</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div class="page-sm">
+
+  <div class="auth-logo">
+    <h1>GAMA<span style="color:var(--text)">SERVICE</span></h1>
+    <p>Registro Ore Lavoro</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">— Accedi</div>
+
+    <div class="form-group">
+      <label>Nome utente o Email</label>
+      <input type="text" id="loginUser" placeholder="es. GamaService o mario@email.it" autocomplete="username"/>
+    </div>
+
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+
+    <div class="alert alert-error" id="loginError"></div>
+
+    <button class="btn btn-primary" id="btnLogin" onclick="doLogin()">
+      Accedi
+    </button>
+  </div>
+
+  <div class="auth-link">
+    Sei un operaio nuovo? <a href="registrati.html">Registrati qui</a>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { auth, db } from './js/firebase-config.js';
+  import {
+    signInWithEmailAndPassword,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    doc, getDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // Se già loggato, redirect
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const snap = await getDoc(doc(db, 'utenti', user.uid));
+      if (snap.exists() && snap.data().ruolo === 'admin') {
+        window.location.href = 'admin.html';
+      } else {
+        window.location.href = 'operaio.html';
+      }
+    }
+  });
+
+  // ADMIN username → email fittizia interna
+  const ADMIN_USERNAME = 'GamaService';
+  const ADMIN_EMAIL    = 'admin@gamaservice.interno';
+
+  window.doLogin = async function() {
+    const userInput = document.getElementById('loginUser').value.trim();
+    const pass      = document.getElementById('loginPass').value;
+    const errEl     = document.getElementById('loginError');
+    const btn       = document.getElementById('btnLogin');
+
+    errEl.classList.remove('show');
+    if (!userInput || !pass) { showErr('Compila tutti i campi'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Accesso...';
+
+    // Determina email
+    let email = userInput;
+    if (userInput === ADMIN_USERNAME) {
+      email = ADMIN_EMAIL;
+    } else if (!userInput.includes('@')) {
+      showErr('Inserisci email valida o username GamaService');
+      reset(); return;
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      // redirect gestito da onAuthStateChanged
+    } catch(e) {
+      let msg = 'Credenziali non valide';
+      if (e.code === 'auth/user-not-found') msg = 'Utente non trovato';
+      if (e.code === 'auth/wrong-password') msg = 'Password errata';
+      if (e.code === 'auth/too-many-requests') msg = 'Troppi tentativi, riprova tra poco';
+      showErr(msg);
+      reset();
+    }
+  };
+
+  function showErr(msg) {
+    const el = document.getElementById('loginError');
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+
+  function reset() {
+    const btn = document.getElementById('btnLogin');
+    btn.disabled = false;
+    btn.innerHTML = 'Accedi';
+  }
+
+  // Enter key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.doLogin();
+  });
+</script>
+</body>
+</html>

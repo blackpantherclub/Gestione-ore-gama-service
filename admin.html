@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin – Gama Service</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">GAMA<span>SERVICE</span></div>
+  <div class="topbar-right">
+    <span style="color:var(--orange);font-size:12px;font-weight:600;">AMMINISTRATORE</span>
+    <button class="btn-logout" onclick="doLogout()">Esci</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- HEADER + MESE -->
+  <div class="operaio-header">
+    <div>
+      <h2>Pannello Admin</h2>
+      <div class="sub">Registro ore di tutti gli operai</div>
+    </div>
+    <div class="month-nav">
+      <button onclick="cambioMese(-1)">‹</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button onclick="cambioMese(+1)">›</button>
+    </div>
+  </div>
+
+  <!-- STATS GLOBALI -->
+  <div class="stats-row" id="statsGlobali">
+    <div class="stat-box">
+      <div class="s-label">Operai registrati</div>
+      <div class="s-val" id="statOperai">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="s-label">Ore totali mese</div>
+      <div class="s-val" id="statOreTot">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="s-label">Operai attivi</div>
+      <div class="s-val" id="statAttivi">—</div>
+    </div>
+  </div>
+
+  <!-- LISTA OPERAI -->
+  <div class="card">
+    <div class="card-title">— Operai</div>
+    <div id="listaOperai">
+      <div style="text-align:center;padding:30px;color:var(--muted);">
+        <span class="spinner"></span> Caricamento...
+      </div>
+    </div>
+  </div>
+
+  <!-- DETTAGLIO OPERAIO (nascosto di default) -->
+  <div id="dettaglioWrap" style="display:none;">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">— Dettaglio operaio</div>
+          <div style="font-size:18px;font-weight:600;" id="detNome"></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="detEmail"></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="scaricaPDFOperaio()">📄 PDF operaio</button>
+          <button class="btn btn-secondary btn-sm" onclick="chiudiDettaglio()">✕ Chiudi</button>
+        </div>
+      </div>
+
+      <!-- Mini stats operaio -->
+      <div class="stats-row" style="margin-bottom:20px;">
+        <div class="stat-box">
+          <div class="s-label">Ore mese</div>
+          <div class="s-val" id="detOreMese">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-label">Giorni lavorati</div>
+          <div class="s-val" id="detGiorni">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-label">Media giornaliera</div>
+          <div class="s-val" id="detMedia">—</div>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="tabellaDettaglio">
+          <thead>
+            <tr>
+              <th>Giorno</th>
+              <th>Partenza</th>
+              <th>Fine lavoro</th>
+              <th>Pausa</th>
+              <th>Ore totali</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyDettaglio"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { auth, db } from './js/firebase-config.js';
+  import {
+    onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    doc, getDoc, collection, getDocs
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+  let viewYear  = new Date().getFullYear();
+  let viewMonth = new Date().getMonth();
+  let operai    = [];
+  let selectedOperaio = null;
+  let selectedDati    = {};
+
+  // ── AUTH CHECK ──
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    const snap = await getDoc(doc(db, 'utenti', user.uid));
+    if (!snap.exists() || snap.data().ruolo !== 'admin') {
+      window.location.href = 'operaio.html'; return;
+    }
+    aggiornaLabel();
+    caricaOperai();
+  });
+
+  function aggiornaLabel() {
+    document.getElementById('monthLabel').textContent = `${MESI[viewMonth]} ${viewYear}`;
+  }
+
+  // ── CAMBIA MESE ──
+  window.cambioMese = function(dir) {
+    viewMonth += dir;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    if (viewMonth < 0)  { viewMonth = 11; viewYear--; }
+    aggiornaLabel();
+    caricaOperai();
+    if (selectedOperaio) apriOperaio(selectedOperaio);
+  };
+
+  // ── CARICA TUTTI OPERAI ──
+  async function caricaOperai() {
+    const chiave = `${viewYear}_${String(viewMonth+1).padStart(2,'0')}`;
+    const snap   = await getDocs(collection(db, 'utenti'));
+
+    operai = [];
+    snap.forEach(d => {
+      const u = d.data();
+      if (u.ruolo !== 'admin') operai.push(u);
+    });
+
+    // Per ogni operaio carica ore del mese
+    let totOreMese = 0, attivi = 0;
+    const operaiConOre = await Promise.all(operai.map(async (op) => {
+      const mSnap = await getDoc(doc(db, 'utenti', op.uid, 'mesi', chiave));
+      const giorni = mSnap.exists() ? (mSnap.data().giorni || {}) : {};
+      const mins   = calcolaTotaleMin(giorni);
+      if (mins > 0) attivi++;
+      totOreMese += mins;
+      return { ...op, oreMese: mins, giorni };
+    }));
+
+    document.getElementById('statOperai').textContent = operai.length;
+    document.getElementById('statOreTot').textContent = formatMin(totOreMese);
+    document.getElementById('statAttivi').textContent = attivi;
+
+    renderListaOperai(operaiConOre);
+  }
+
+  function renderListaOperai(lista) {
+    const el = document.getElementById('listaOperai');
+    if (lista.length === 0) {
+      el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);">Nessun operaio registrato</div>';
+      return;
+    }
+
+    el.innerHTML = lista.map(op => `
+      <div class="operaio-card" onclick="apriOperaio(${JSON.stringify(op).replace(/"/g,'&quot;')})">
+        <div>
+          <div class="oc-name">${op.nomeCompleto || op.nome+' '+op.cognome}</div>
+          <div class="oc-email">${op.email}</div>
+        </div>
+        <div class="oc-right">
+          <span class="badge ${op.oreMese>0?'badge-green':'badge-orange'}">
+            ${op.oreMese>0 ? formatMin(op.oreMese)+' questo mese' : 'nessuna ora'}
+          </span>
+          <span style="color:var(--muted);font-size:18px;">›</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── APRI DETTAGLIO OPERAIO ──
+  window.apriOperaio = async function(op) {
+    if (typeof op === 'string') op = JSON.parse(op);
+    selectedOperaio = op;
+
+    const chiave = `${viewYear}_${String(viewMonth+1).padStart(2,'0')}`;
+    const mSnap  = await getDoc(doc(db, 'utenti', op.uid, 'mesi', chiave));
+    selectedDati = mSnap.exists() ? (mSnap.data().giorni || {}) : {};
+
+    document.getElementById('detNome').textContent  = op.nomeCompleto || `${op.nome} ${op.cognome}`;
+    document.getElementById('detEmail').textContent = op.email;
+    document.getElementById('dettaglioWrap').style.display = 'block';
+    document.getElementById('dettaglioWrap').scrollIntoView({ behavior:'smooth' });
+
+    // Mini stats
+    const totMins  = calcolaTotaleMin(selectedDati);
+    const giorni   = Object.values(selectedDati).filter(r => r.totale).length;
+    document.getElementById('detOreMese').textContent = formatMin(totMins);
+    document.getElementById('detGiorni').textContent  = giorni;
+    document.getElementById('detMedia').textContent   = giorni>0 ? formatMin(Math.round(totMins/giorni)) : '0h';
+
+    renderTabellaDettaglio();
+  };
+
+  window.chiudiDettaglio = function() {
+    document.getElementById('dettaglioWrap').style.display = 'none';
+    selectedOperaio = null;
+  };
+
+  function renderTabellaDettaglio() {
+    const tbody = document.getElementById('tbodyDettaglio');
+    tbody.innerHTML = '';
+    const giorniNelMese = new Date(viewYear, viewMonth+1, 0).getDate();
+
+    for (let g = 1; g <= giorniNelMese; g++) {
+      const data    = new Date(viewYear, viewMonth, g);
+      const dow     = data.getDay();
+      const weekend = dow===0||dow===6;
+      const nomeG   = data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit'});
+      const r       = selectedDati[g] || {};
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="${weekend?'weekend':''}">${nomeG}</td>
+        <td>${r.partenza||'—'}</td>
+        <td>${r.fine||'—'}</td>
+        <td>${r.pausa ? r.pausa+'min' : '—'}</td>
+        <td class="totale">${r.totale||'—'}</td>
+        <td style="color:var(--muted);font-size:12px;">${r.note||''}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ── PDF OPERAIO ──
+  window.scaricaPDFOperaio = function() {
+    if (!selectedOperaio) return;
+    const { jsPDF } = window.jspdf;
+    const doc2 = new jsPDF();
+    const W = 210, mg = 14;
+
+    doc2.setFillColor(15,15,15);
+    doc2.rect(0,0,W,28,'F');
+    doc2.setFillColor(255,106,0);
+    doc2.rect(0,0,W,4,'F');
+    doc2.setTextColor(255,106,0);
+    doc2.setFontSize(18);
+    doc2.setFont('helvetica','bold');
+    doc2.text('GAMA SERVICE', mg, 18);
+    doc2.setTextColor(180,180,180);
+    doc2.setFontSize(9);
+    doc2.setFont('helvetica','normal');
+    doc2.text(`Registro Ore – ${MESI[viewMonth]} ${viewYear}`, W-mg, 18, {align:'right'});
+
+    doc2.setFillColor(30,30,30);
+    doc2.rect(mg,32,W-mg*2,12,'F');
+    doc2.setTextColor(200,200,200);
+    doc2.setFontSize(10);
+    const nome = selectedOperaio.nomeCompleto || `${selectedOperaio.nome} ${selectedOperaio.cognome}`;
+    doc2.text(`Operaio: ${nome}   |   Email: ${selectedOperaio.email}`, mg+4, 40);
+
+    let y = 54;
+    doc2.setFillColor(40,40,40);
+    doc2.rect(mg,y-5,W-mg*2,9,'F');
+    doc2.setTextColor(120,120,120);
+    doc2.setFontSize(8);
+    doc2.setFont('helvetica','bold');
+    ['GIORNO','PARTENZA','FINE','PAUSA','ORE TOT','NOTE'].forEach((h,i)=>{
+      const xs=[mg+2,mg+32,mg+60,mg+90,mg+115,mg+140];
+      doc2.text(h,xs[i],y);
+    });
+    y+=7;
+
+    const giorniNelMese = new Date(viewYear,viewMonth+1,0).getDate();
+    let totMins=0, riga=0;
+
+    for(let g=1;g<=giorniNelMese;g++){
+      if(y>278){doc2.addPage();y=20;}
+      const data=new Date(viewYear,viewMonth,g);
+      const dow=data.getDay();
+      const weekend=dow===0||dow===6;
+      const nomeG=data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit'});
+      const r=selectedDati[g]||{};
+      if(riga%2===0){doc2.setFillColor(22,22,22);doc2.rect(mg,y-4,W-mg*2,8,'F');}
+      doc2.setFontSize(8.5);doc2.setFont('helvetica','normal');
+      if(weekend)doc2.setTextColor(220,100,60);
+      else doc2.setTextColor(210,210,210);
+      const xs=[mg+2,mg+32,mg+60,mg+90,mg+115,mg+140];
+      doc2.text(nomeG,xs[0],y);
+      doc2.text(r.partenza||'-',xs[1],y);
+      doc2.text(r.fine||'-',xs[2],y);
+      doc2.text(r.pausa?r.pausa+'min':'-',xs[3],y);
+      doc2.setTextColor(255,106,0);doc2.setFont('helvetica','bold');
+      doc2.text(r.totale||'-',xs[4],y);
+      doc2.setTextColor(150,150,150);doc2.setFont('helvetica','normal');doc2.setFontSize(7.5);
+      if(r.note)doc2.text(r.note.substring(0,28),xs[5],y);
+      totMins+=totaleToMin(r.totale);
+      y+=8;riga++;
+    }
+
+    y+=4;
+    doc2.setFillColor(255,106,0);doc2.rect(mg,y-5,W-mg*2,10,'F');
+    doc2.setTextColor(0,0,0);doc2.setFontSize(10);doc2.setFont('helvetica','bold');
+    doc2.text('TOTALE MESE',mg+2,y+0.5);
+    doc2.text(formatMin(totMins),W-mg-2,y+0.5,{align:'right'});
+    doc2.setTextColor(80,80,80);doc2.setFontSize(7);doc2.setFont('helvetica','normal');
+    doc2.text(`Generato il ${new Date().toLocaleDateString('it-IT')} – Gama Service`,W/2,290,{align:'center'});
+
+    const cognome = selectedOperaio.cognome || selectedOperaio.nomeCompleto;
+    doc2.save(`ore_${cognome}_${MESI[viewMonth]}_${viewYear}.pdf`);
+    showToast('✓ PDF scaricato!');
+  };
+
+  // ── UTILS ──
+  function calcolaTotaleMin(giorni) {
+    return Object.values(giorni).reduce((acc,r)=>acc+totaleToMin(r.totale),0);
+  }
+
+  function totaleToMin(totale) {
+    if(!totale)return 0;
+    const mH=totale.match(/(\d+)h/);
+    const mM=totale.match(/(\d+)m/);
+    return (mH?parseInt(mH[1])*60:0)+(mM?parseInt(mM[1]):0);
+  }
+
+  function formatMin(mins) {
+    const h=Math.floor(mins/60),m=mins%60;
+    return m>0?`${h}h ${m}m`:`${h}h`;
+  }
+
+  // ── LOGOUT ──
+  window.doLogout = async function() {
+    await signOut(auth);
+    window.location.href = 'index.html';
+  };
+
+  function showToast(msg,err=false){
+    const t=document.getElementById('toast');
+    t.textContent=msg;t.className='toast'+(err?' error':'');
+    t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);
+  }
+  window.showToast=showToast;
+</script>
+</body>
+</html>

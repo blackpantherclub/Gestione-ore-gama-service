@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Le mie ore – Gama Service</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">GAMA<span>SERVICE</span></div>
+  <div class="topbar-right">
+    <span id="topNome"></span>
+    <button class="btn-logout" onclick="doLogout()">Esci</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="operaio-header">
+    <div>
+      <h2 id="benvenuto">Caricamento...</h2>
+      <div class="sub" id="subEmail"></div>
+    </div>
+    <div class="month-nav">
+      <button onclick="cambioMese(-1)">‹</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button onclick="cambioMese(+1)">›</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-box">
+      <div class="s-label">Ore totali mese</div>
+      <div class="s-val" id="statOreMese">0h</div>
+    </div>
+    <div class="stat-box">
+      <div class="s-label">Giorni lavorati</div>
+      <div class="s-val" id="statGiorni">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="s-label">Ore settimana</div>
+      <div class="s-val" id="statSettimana">0h</div>
+    </div>
+    <div class="stat-box">
+      <div class="s-label">Media giornaliera</div>
+      <div class="s-val" id="statMedia">0h</div>
+    </div>
+  </div>
+
+  <!-- AZIONI -->
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <button class="btn btn-secondary btn-sm" onclick="salvaTutto()">💾 Salva</button>
+    <button class="btn btn-secondary btn-sm" onclick="scaricaPDF()">📄 Scarica PDF mese</button>
+  </div>
+
+  <!-- TABELLA ORE -->
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table class="data-table" id="tabellaOre">
+        <thead>
+          <tr>
+            <th>Giorno</th>
+            <th>Partenza</th>
+            <th>Fine lavoro</th>
+            <th>Pausa pranzo</th>
+            <th>Ore totali</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyOre"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { auth, db } from './js/firebase-config.js';
+  import {
+    onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    doc, getDoc, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  let currentUser = null;
+  let profilo     = null;
+  let viewYear    = new Date().getFullYear();
+  let viewMonth   = new Date().getMonth(); // 0-indexed
+  let datiMese    = {};
+
+  const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+  // ── AUTH CHECK ──
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.href = 'index.html'; return; }
+    currentUser = user;
+
+    const snap = await getDoc(doc(db, 'utenti', user.uid));
+    if (!snap.exists()) { window.location.href = 'index.html'; return; }
+    profilo = snap.data();
+    if (profilo.ruolo === 'admin') { window.location.href = 'admin.html'; return; }
+
+    document.getElementById('benvenuto').textContent = `Ciao, ${profilo.nome}!`;
+    document.getElementById('subEmail').textContent  = profilo.email;
+    document.getElementById('topNome').textContent   = `${profilo.nome} ${profilo.cognome}`;
+
+    await caricaMese();
+  });
+
+  // ── MESE ──
+  window.cambioMese = async function(dir) {
+    await salvaSilenzioso();
+    viewMonth += dir;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    if (viewMonth < 0)  { viewMonth = 11; viewYear--; }
+    await caricaMese();
+  };
+
+  async function caricaMese() {
+    const chiave = `${viewYear}_${String(viewMonth+1).padStart(2,'0')}`;
+    document.getElementById('monthLabel').textContent = `${MESI[viewMonth]} ${viewYear}`;
+
+    // Carica da Firestore
+    const ref  = doc(db, 'utenti', currentUser.uid, 'mesi', chiave);
+    const snap = await getDoc(ref);
+    datiMese = snap.exists() ? (snap.data().giorni || {}) : {};
+
+    creaTabella();
+    aggiornaStats();
+  }
+
+  // ── GENERA OPZIONI ORA ──
+  function opzioniOra(selezionato) {
+    let html = '<option value="">--</option>';
+    for (let h = 0; h < 24; h++) {
+      for (let m of [0, 30]) {
+        const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        html += `<option value="${val}"${val===selezionato?' selected':''}>${val}</option>`;
+      }
+    }
+    return html;
+  }
+
+  // ── TABELLA ──
+  function creaTabella() {
+    const tbody = document.getElementById('tbodyOre');
+    tbody.innerHTML = '';
+    const giorniNelMese = new Date(viewYear, viewMonth+1, 0).getDate();
+    const oggi = new Date();
+
+    for (let g = 1; g <= giorniNelMese; g++) {
+      const data    = new Date(viewYear, viewMonth, g);
+      const dow     = data.getDay(); // 0=dom, 6=sab
+      const weekend = dow === 0 || dow === 6;
+      const isOggi  = oggi.getFullYear()===viewYear && oggi.getMonth()===viewMonth && oggi.getDate()===g;
+
+      const nomeG = data.toLocaleDateString('it-IT', {
+        weekday:'short', day:'2-digit', month:'2-digit'
+      });
+
+      if (!datiMese[g]) datiMese[g] = { partenza:'', fine:'', pausa:'30', note:'', totale:'' };
+      const r = datiMese[g];
+
+      const tr = document.createElement('tr');
+      if (isOggi) tr.style.outline = '2px solid var(--orange)';
+
+      tr.innerHTML = `
+        <td class="${weekend?'weekend':''}" style="${isOggi?'font-weight:700;':''}">${nomeG}</td>
+        <td>
+          <select onchange="aggiornaRiga(${g},'partenza',this.value)">
+            ${opzioniOra(r.partenza)}
+          </select>
+        </td>
+        <td>
+          <select onchange="aggiornaRiga(${g},'fine',this.value)">
+            ${opzioniOra(r.fine)}
+          </select>
+        </td>
+        <td>
+          <input type="text" value="${r.pausa}" placeholder="min"
+            style="width:65px;"
+            onchange="aggiornaRiga(${g},'pausa',this.value)"
+            title="Minuti di pausa pranzo"/>
+        </td>
+        <td class="totale" id="tot-${g}">${r.totale}</td>
+        <td>
+          <input type="text" value="${r.note||''}" placeholder="note..."
+            style="width:130px;"
+            onchange="aggiornaRiga(${g},'note',this.value)"/>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // ── AGGIORNA RIGA ──
+  window.aggiornaRiga = function(g, campo, valore) {
+    datiMese[g][campo] = valore;
+    calcolaTotale(g);
+    aggiornaStats();
+    salvaSilenzioso();
+  };
+
+  function calcolaTotale(g) {
+    const r       = datiMese[g];
+    const partMin = oraToMin(r.partenza);
+    const fineMin = oraToMin(r.fine);
+    if (partMin === null || fineMin === null) {
+      r.totale = '';
+      const el = document.getElementById(`tot-${g}`);
+      if (el) el.textContent = '';
+      return;
+    }
+    const pausa = parseInt(r.pausa) || 0;
+    let lavorati = fineMin - partMin - pausa;
+    if (lavorati < 0) lavorati = 0;
+    const ore = Math.floor(lavorati/60);
+    const min = lavorati % 60;
+    r.totale = min > 0 ? `${ore}h ${String(min).padStart(2,'0')}m` : `${ore}h`;
+    const el = document.getElementById(`tot-${g}`);
+    if (el) el.textContent = r.totale;
+  }
+
+  function oraToMin(ora) {
+    if (!ora) return null;
+    const [h,m] = ora.split(':').map(Number);
+    return h*60 + m;
+  }
+
+  // ── STATS ──
+  function aggiornaStats() {
+    let totaleMins = 0, giorni = 0;
+    const oggi     = new Date();
+    const startSet = new Date(oggi); startSet.setDate(oggi.getDate() - (oggi.getDay()===0?6:oggi.getDay()-1)); startSet.setHours(0,0,0,0);
+    const endSet   = new Date(startSet); endSet.setDate(startSet.getDate()+6);
+    let settMins   = 0;
+
+    Object.entries(datiMese).forEach(([g, r]) => {
+      const min = totaleToMin(r.totale);
+      if (min > 0) { totaleMins += min; giorni++; }
+      // settimana corrente
+      const dataG = new Date(viewYear, viewMonth, parseInt(g));
+      if (dataG >= startSet && dataG <= endSet) settMins += min;
+    });
+
+    document.getElementById('statOreMese').textContent   = formatMin(totaleMins);
+    document.getElementById('statGiorni').textContent    = giorni;
+    document.getElementById('statSettimana').textContent = formatMin(settMins);
+    document.getElementById('statMedia').textContent     = giorni > 0 ? formatMin(Math.round(totaleMins/giorni)) : '0h';
+  }
+
+  function totaleToMin(totale) {
+    if (!totale) return 0;
+    const mH = totale.match(/(\d+)h/);
+    const mM = totale.match(/(\d+)m/);
+    return (mH ? parseInt(mH[1])*60 : 0) + (mM ? parseInt(mM[1]) : 0);
+  }
+
+  function formatMin(mins) {
+    const h = Math.floor(mins/60), m = mins%60;
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  // ── SALVA ──
+  async function salvaSilenzioso() {
+    if (!currentUser) return;
+    const chiave = `${viewYear}_${String(viewMonth+1).padStart(2,'0')}`;
+    const ref    = doc(db, 'utenti', currentUser.uid, 'mesi', chiave);
+    await setDoc(ref, {
+      giorni: datiMese,
+      aggiornato: serverTimestamp(),
+      anno: viewYear,
+      mese: viewMonth+1
+    }, { merge: true });
+  }
+
+  window.salvaTutto = async function() {
+    await salvaSilenzioso();
+    showToast('✓ Salvato!');
+  };
+
+  // ── PDF ──
+  window.scaricaPDF = async function() {
+    await salvaSilenzioso();
+    const { jsPDF } = window.jspdf;
+    const doc2 = new jsPDF();
+    const W    = 210, mg = 14;
+
+    // Header
+    doc2.setFillColor(15,15,15);
+    doc2.rect(0,0,W,28,'F');
+    doc2.setFillColor(255,106,0);
+    doc2.rect(0,0,W,4,'F');
+    doc2.setTextColor(255,106,0);
+    doc2.setFontSize(18);
+    doc2.setFont('helvetica','bold');
+    doc2.text('GAMA SERVICE', mg, 18);
+    doc2.setTextColor(180,180,180);
+    doc2.setFontSize(9);
+    doc2.setFont('helvetica','normal');
+    doc2.text(`Registro Ore – ${MESI[viewMonth]} ${viewYear}`, W-mg, 18, {align:'right'});
+
+    // Operaio
+    doc2.setFillColor(30,30,30);
+    doc2.rect(mg, 32, W-mg*2, 12, 'F');
+    doc2.setTextColor(200,200,200);
+    doc2.setFontSize(10);
+    doc2.text(`Operaio: ${profilo.nomeCompleto}   |   Email: ${profilo.email}`, mg+4, 40);
+
+    let y = 54;
+    // Intestazione tabella
+    doc2.setFillColor(40,40,40);
+    doc2.rect(mg, y-5, W-mg*2, 9, 'F');
+    doc2.setTextColor(120,120,120);
+    doc2.setFontSize(8);
+    doc2.setFont('helvetica','bold');
+    ['GIORNO','PARTENZA','FINE','PAUSA','ORE TOT','NOTE'].forEach((h,i) => {
+      const xs = [mg+2, mg+32, mg+60, mg+90, mg+115, mg+140];
+      doc2.text(h, xs[i], y);
+    });
+    y += 7;
+
+    const giorniNelMese = new Date(viewYear, viewMonth+1, 0).getDate();
+    let totMins = 0, riga = 0;
+
+    for (let g = 1; g <= giorniNelMese; g++) {
+      if (y > 278) { doc2.addPage(); y = 20; }
+      const data    = new Date(viewYear, viewMonth, g);
+      const dow     = data.getDay();
+      const weekend = dow===0||dow===6;
+      const nomeG   = data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit'});
+      const r       = datiMese[g] || {};
+
+      if (riga%2===0) { doc2.setFillColor(22,22,22); doc2.rect(mg,y-4,W-mg*2,8,'F'); }
+
+      doc2.setFontSize(8.5);
+      doc2.setFont('helvetica','normal');
+      if (weekend) doc2.setTextColor(220,100,60);
+      else doc2.setTextColor(210,210,210);
+
+      const xs = [mg+2, mg+32, mg+60, mg+90, mg+115, mg+140];
+      doc2.text(nomeG,         xs[0], y);
+      doc2.text(r.partenza||'-', xs[1], y);
+      doc2.text(r.fine||'-',    xs[2], y);
+      doc2.text((r.pausa||'-')+'min', xs[3], y);
+
+      doc2.setTextColor(255,106,0);
+      doc2.setFont('helvetica','bold');
+      doc2.text(r.totale||'-', xs[4], y);
+
+      doc2.setTextColor(150,150,150);
+      doc2.setFont('helvetica','normal');
+      doc2.setFontSize(7.5);
+      if (r.note) doc2.text(r.note.substring(0,28), xs[5], y);
+
+      totMins += totaleToMin(r.totale);
+      y += 8; riga++;
+    }
+
+    // Totale
+    y += 4;
+    doc2.setFillColor(255,106,0);
+    doc2.rect(mg, y-5, W-mg*2, 10, 'F');
+    doc2.setTextColor(0,0,0);
+    doc2.setFontSize(10);
+    doc2.setFont('helvetica','bold');
+    doc2.text('TOTALE MESE', mg+2, y+0.5);
+    doc2.text(formatMin(totMins), W-mg-2, y+0.5, {align:'right'});
+
+    // Footer
+    doc2.setTextColor(80,80,80);
+    doc2.setFontSize(7);
+    doc2.setFont('helvetica','normal');
+    doc2.text(`Generato il ${new Date().toLocaleDateString('it-IT')} – Gama Service`, W/2, 290, {align:'center'});
+
+    doc2.save(`ore_${profilo.cognome}_${MESI[viewMonth]}_${viewYear}.pdf`);
+    showToast('✓ PDF scaricato!');
+  };
+
+  // ── LOGOUT ──
+  window.doLogout = async function() {
+    await salvaSilenzioso();
+    await signOut(auth);
+    window.location.href = 'index.html';
+  };
+
+  // ── TOAST ──
+  function showToast(msg, err=false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (err?' error':'');
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2500);
+  }
+  window.showToast = showToast;
+</script>
+</body>
+</html>
