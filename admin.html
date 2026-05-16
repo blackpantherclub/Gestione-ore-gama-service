@@ -97,7 +97,8 @@
               <th>Giorno</th>
               <th>Partenza</th>
               <th>Fine lavoro</th>
-              <th>Pausa</th>
+              <th>Pausa (min)</th>
+              <th>Straordinario</th>
               <th>Ore totali</th>
               <th>Note</th>
             </tr>
@@ -254,6 +255,7 @@
         <td>${r.partenza||'—'}</td>
         <td>${r.fine||'—'}</td>
         <td>${r.pausa ? r.pausa+'min' : '—'}</td>
+        <td style="color:var(--muted2);">${r.straordinario||'—'}</td>
         <td class="totale">${r.totale||'—'}</td>
         <td style="color:var(--muted);font-size:12px;">${r.note||''}</td>
       `;
@@ -294,8 +296,8 @@
     doc2.setTextColor(120,120,120);
     doc2.setFontSize(8);
     doc2.setFont('helvetica','bold');
-    ['GIORNO','PARTENZA','FINE','PAUSA','ORE TOT','NOTE'].forEach((h,i)=>{
-      const xs=[mg+2,mg+32,mg+60,mg+90,mg+115,mg+140];
+    ['GIORNO','PARTENZA','FINE','PAUSA','STRAORD.','ORE TOT','NOTE'].forEach((h,i)=>{
+      const xs=[mg+2,mg+30,mg+56,mg+82,mg+104,mg+130,mg+155];
       doc2.text(h,xs[i],y);
     });
     y+=7;
@@ -314,15 +316,17 @@
       doc2.setFontSize(8.5);doc2.setFont('helvetica','normal');
       if(weekend)doc2.setTextColor(220,100,60);
       else doc2.setTextColor(210,210,210);
-      const xs=[mg+2,mg+32,mg+60,mg+90,mg+115,mg+140];
+      const xs=[mg+2,mg+30,mg+56,mg+82,mg+104,mg+130,mg+155];
       doc2.text(nomeG,xs[0],y);
       doc2.text(r.partenza||'-',xs[1],y);
       doc2.text(r.fine||'-',xs[2],y);
-      doc2.text(r.pausa?r.pausa+'min':'-',xs[3],y);
+      doc2.text(r.pausa?r.pausa+'m':'-',xs[3],y);
+      doc2.setTextColor(200,160,60);
+      doc2.text(r.straordinario||'-',xs[4],y);
       doc2.setTextColor(255,106,0);doc2.setFont('helvetica','bold');
-      doc2.text(r.totale||'-',xs[4],y);
+      doc2.text(r.totale||'-',xs[5],y);
       doc2.setTextColor(150,150,150);doc2.setFont('helvetica','normal');doc2.setFontSize(7.5);
-      if(r.note)doc2.text(r.note.substring(0,28),xs[5],y);
+      if(r.note)doc2.text(r.note.substring(0,22),xs[6],y);
       totMins+=totaleToMin(r.totale);
       y+=8;riga++;
     }
