@@ -152,6 +152,17 @@
     return html;
   }
 
+  // ── GENERA OPZIONI PAUSA (10min → 60min step 10) ──
+  function opzioniPausa(selezionato) {
+    let html = '<option value="">--</option>';
+    for (let m = 10; m <= 60; m += 10) {
+      const label = m < 60 ? `${m} min` : `1 ora`;
+      const sel   = String(m) === String(selezionato) ? 'selected' : '';
+      html += `<option value="${m}" ${sel}>${label}</option>`;
+    }
+    return html;
+  }
+
   // ── TABELLA ──
   function creaTabella() {
     const tbody = document.getElementById('tbodyOre');
@@ -188,10 +199,9 @@
           </select>
         </td>
         <td>
-          <input type="text" value="${r.pausa||''}" placeholder="es. 30"
-            style="width:65px;"
-            onchange="aggiornaRiga(${g},'pausa',this.value)"
-            title="Minuti di pausa pranzo"/>
+          <select onchange="aggiornaRiga(${g},'pausa',this.value)">
+            ${opzioniPausa(r.pausa)}
+          </select>
         </td>
         <td>
           <input type="text" value="${r.straordinario||''}" placeholder="es. 1h"
