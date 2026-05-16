@@ -49,6 +49,11 @@
     </div>
   </div>
 
+  <!-- PULSANTE PDF GLOBALE -->
+  <button class="btn-pdf-all" id="btnPdfAll" onclick="scaricaPDFTutti()" style="display:none">
+    <span>⬇</span> SCARICA PDF TUTTI GLI OPERAI — <span id="btnPdfMese"></span>
+  </button>
+
   <!-- LISTA OPERAI -->
   <div class="card">
     <div class="card-title">— Operai</div>
@@ -83,6 +88,10 @@
         <div class="stat-box">
           <div class="s-label">Giorni lavorati</div>
           <div class="s-val" id="detGiorni">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="s-label">Straordinari mese</div>
+          <div class="s-val" style="color:var(--text);font-size:22px;" id="detStraord">—</div>
         </div>
         <div class="stat-box">
           <div class="s-label">Media giornaliera</div>
@@ -182,6 +191,16 @@
     document.getElementById('statOreTot').textContent = formatMin(totOreMese);
     document.getElementById('statAttivi').textContent = attivi;
 
+    // Mostra pulsante PDF globale
+    window._operaiConOre = operaiConOre;
+    const btnPdf = document.getElementById('btnPdfAll');
+    if (operaiConOre.length > 0) {
+      btnPdf.style.display = 'flex';
+      document.getElementById('btnPdfMese').textContent = `${MESI[viewMonth]} ${viewYear}`;
+    } else {
+      btnPdf.style.display = 'none';
+    }
+
     renderListaOperai(operaiConOre);
   }
 
@@ -225,9 +244,15 @@
     // Mini stats
     const totMins  = calcolaTotaleMin(selectedDati);
     const giorni   = Object.values(selectedDati).filter(r => r.totale).length;
-    document.getElementById('detOreMese').textContent = formatMin(totMins);
-    document.getElementById('detGiorni').textContent  = giorni;
-    document.getElementById('detMedia').textContent   = giorni>0 ? formatMin(Math.round(totMins/giorni)) : '0h';
+    const straordList = Object.values(selectedDati).filter(r => r.straordinario && r.straordinario.trim() !== '');
+    const straordTxt  = straordList.length > 0
+      ? straordList.map(r => r.straordinario).join(', ')
+      : '—';
+    document.getElementById('detOreMese').textContent  = formatMin(totMins);
+    document.getElementById('detGiorni').textContent   = giorni;
+    document.getElementById('detStraord').textContent  = straordList.length > 0 ? `${straordList.length} gg` : '—';
+    document.getElementById('detStraord').title        = straordTxt;
+    document.getElementById('detMedia').textContent    = giorni>0 ? formatMin(Math.round(totMins/giorni)) : '0h';
 
     renderTabellaDettaglio();
   };
@@ -262,6 +287,121 @@
       tbody.appendChild(tr);
     }
   }
+
+
+  // ── PDF TUTTI GLI OPERAI ──
+  window.scaricaPDFTutti = async function() {
+    const lista = window._operaiConOre;
+    if (!lista || lista.length === 0) { showToast('Nessun operaio trovato', true); return; }
+
+    const btn = document.getElementById('btnPdfAll');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Generazione PDF...';
+
+    const { jsPDF } = window.jspdf;
+    const doc2 = new jsPDF();
+    const W = 210, mg = 14;
+    const chiave = `${viewYear}_${String(viewMonth+1).padStart(2,'0')}`;
+    const giorniNelMese = new Date(viewYear, viewMonth+1, 0).getDate();
+
+    // Funzione per disegnare la pagina di un operaio
+    function disegnaOperaio(op, datiGiorni, primiDati) {
+      if (!primiDati) doc2.addPage();
+
+      // Header
+      doc2.setFillColor(15,15,15);
+      doc2.rect(0,0,W,28,'F');
+      doc2.setFillColor(255,106,0);
+      doc2.rect(0,0,W,4,'F');
+      doc2.setTextColor(255,106,0);
+      doc2.setFontSize(18);
+      doc2.setFont('helvetica','bold');
+      doc2.text('GAMA SERVICE', mg, 18);
+      doc2.setTextColor(180,180,180);
+      doc2.setFontSize(9);
+      doc2.setFont('helvetica','normal');
+      doc2.text(`Registro Ore – ${MESI[viewMonth]} ${viewYear}`, W-mg, 18, {align:'right'});
+
+      // Operaio info
+      doc2.setFillColor(30,30,30);
+      doc2.rect(mg,32,W-mg*2,12,'F');
+      doc2.setTextColor(200,200,200);
+      doc2.setFontSize(10);
+      const nome = op.nomeCompleto || `${op.nome} ${op.cognome}`;
+      doc2.text(`Operaio: ${nome}   |   Email: ${op.email}`, mg+4, 40);
+
+      let y = 54;
+
+      // Header tabella
+      doc2.setFillColor(40,40,40);
+      doc2.rect(mg,y-5,W-mg*2,9,'F');
+      doc2.setTextColor(120,120,120);
+      doc2.setFontSize(8);
+      doc2.setFont('helvetica','bold');
+      const xs = [mg+2,mg+30,mg+56,mg+82,mg+104,mg+130,mg+155];
+      ['GIORNO','PARTENZA','FINE','PAUSA','STRAORD.','ORE TOT','NOTE'].forEach((h,i)=>{
+        doc2.text(h, xs[i], y);
+      });
+      y += 7;
+
+      let totMins = 0, riga = 0;
+      for (let g = 1; g <= giorniNelMese; g++) {
+        if (y > 278) { doc2.addPage(); y = 20; }
+        const data    = new Date(viewYear, viewMonth, g);
+        const dow     = data.getDay();
+        const weekend = dow===0||dow===6;
+        const nomeG   = data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit'});
+        const r       = datiGiorni[g] || {};
+
+        if (riga%2===0) { doc2.setFillColor(22,22,22); doc2.rect(mg,y-4,W-mg*2,8,'F'); }
+        doc2.setFontSize(8.5); doc2.setFont('helvetica','normal');
+        if (weekend) doc2.setTextColor(220,100,60);
+        else doc2.setTextColor(210,210,210);
+
+        doc2.text(nomeG,           xs[0], y);
+        doc2.text(r.partenza||'-', xs[1], y);
+        doc2.text(r.fine||'-',     xs[2], y);
+        doc2.text(r.pausa ? r.pausa+'m':'-', xs[3], y);
+        doc2.setTextColor(200,160,60);
+        doc2.text(r.straordinario||'-', xs[4], y);
+        doc2.setTextColor(255,106,0); doc2.setFont('helvetica','bold');
+        doc2.text(r.totale||'-',   xs[5], y);
+        doc2.setTextColor(150,150,150); doc2.setFont('helvetica','normal'); doc2.setFontSize(7.5);
+        if (r.note) doc2.text(r.note.substring(0,22), xs[6], y);
+
+        totMins += totaleToMin(r.totale);
+        y += 8; riga++;
+      }
+
+      // Totale
+      y += 4;
+      doc2.setFillColor(255,106,0);
+      doc2.rect(mg,y-5,W-mg*2,10,'F');
+      doc2.setTextColor(0,0,0);
+      doc2.setFontSize(10); doc2.setFont('helvetica','bold');
+      doc2.text('TOTALE MESE', mg+2, y+0.5);
+      doc2.text(formatMin(totMins), W-mg-2, y+0.5, {align:'right'});
+
+      // Footer pagina
+      doc2.setTextColor(80,80,80);
+      doc2.setFontSize(7); doc2.setFont('helvetica','normal');
+      doc2.text(`Generato il ${new Date().toLocaleDateString('it-IT')} – Gama Service`, W/2, 290, {align:'center'});
+    }
+
+    // Carica dati freschi da Firestore per tutti
+    let primo = true;
+    for (const op of lista) {
+      const mSnap = await getDoc(doc(db, 'utenti', op.uid, 'mesi', chiave));
+      const datiGiorni = mSnap.exists() ? (mSnap.data().giorni || {}) : {};
+      disegnaOperaio(op, datiGiorni, primo);
+      primo = false;
+    }
+
+    doc2.save(`ore_tutti_operai_${MESI[viewMonth]}_${viewYear}.pdf`);
+    showToast('✓ PDF scaricato!');
+    btn.disabled = false;
+    btn.innerHTML = `<span>⬇</span> SCARICA PDF TUTTI GLI OPERAI — <span>${MESI[viewMonth]} ${viewYear}</span>`;
+  };
 
   // ── PDF OPERAIO ──
   window.scaricaPDFOperaio = function() {

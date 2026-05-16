@@ -419,7 +419,27 @@ body {
   text-align: center;
 }
 
-/* ── OPERAI LIST (admin) ── */
+/* ── PDF BTN ── */
+.btn-pdf-all {
+  width: 100%;
+  margin-bottom: 20px;
+  background: var(--surface);
+  border: 2px solid var(--orange);
+  color: var(--orange);
+  border-radius: 12px;
+  padding: 16px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s;
+}
+.btn-pdf-all:hover { background: var(--orange-light); transform: translateY(-1px); }
+.btn-pdf-all:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .operaio-card {
   background: var(--surface);
   border: 1px solid var(--border);
