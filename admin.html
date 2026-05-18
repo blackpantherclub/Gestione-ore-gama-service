@@ -14,6 +14,7 @@
   <div class="topbar-logo">GAMA<span>SERVICE</span></div>
   <div class="topbar-right">
     <span style="color:var(--orange);font-size:12px;font-weight:600;">AMMINISTRATORE</span>
+    <a href="furgoni.html" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted2);padding:6px 14px;border-radius:8px;font-size:12px;text-decoration:none;font-family:'Inter',sans-serif;">🚐 Revisioni Furgoni</a>
     <button class="btn-logout" onclick="doLogout()">Esci</button>
   </div>
 </div>
@@ -24,7 +25,7 @@
   <div class="operaio-header">
     <div>
       <h2>Pannello Admin</h2>
-      <div class="sub">Registro ore di tutti gli operai</div>
+      <div class="sub">Registro ore di tutti i tecnici</div>
     </div>
     <div class="month-nav">
       <button onclick="cambioMese(-1)">‹</button>
@@ -36,7 +37,7 @@
   <!-- STATS GLOBALI -->
   <div class="stats-row" id="statsGlobali">
     <div class="stat-box">
-      <div class="s-label">Operai registrati</div>
+      <div class="s-label">Tecnici registrati</div>
       <div class="s-val" id="statOperai">—</div>
     </div>
     <div class="stat-box">
@@ -44,19 +45,19 @@
       <div class="s-val" id="statOreTot">—</div>
     </div>
     <div class="stat-box">
-      <div class="s-label">Operai attivi</div>
+      <div class="s-label">Tecnici attivi</div>
       <div class="s-val" id="statAttivi">—</div>
     </div>
   </div>
 
   <!-- PULSANTE PDF GLOBALE -->
   <button class="btn-pdf-all" id="btnPdfAll" onclick="scaricaPDFTutti()" style="display:none">
-    <span>⬇</span> SCARICA PDF TUTTI GLI OPERAI — <span id="btnPdfMese"></span>
+    <span>⬇</span> SCARICA PDF TUTTI I TECNICI — <span id="btnPdfMese"></span>
   </button>
 
   <!-- LISTA OPERAI -->
   <div class="card">
-    <div class="card-title">— Operai</div>
+    <div class="card-title">— Tecnici</div>
     <div id="listaOperai">
       <div style="text-align:center;padding:30px;color:var(--muted);">
         <span class="spinner"></span> Caricamento...
@@ -69,12 +70,12 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <div>
-          <div class="card-title" style="margin-bottom:4px;">— Dettaglio operaio</div>
+          <div class="card-title" style="margin-bottom:4px;">— Dettaglio tecnico</div>
           <div style="font-size:18px;font-weight:600;" id="detNome"></div>
           <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="detEmail"></div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-secondary btn-sm" onclick="scaricaPDFOperaio()">📄 PDF operaio</button>
+          <button class="btn btn-secondary btn-sm" onclick="scaricaPDFOperaio()">📄 PDF tecnico</button>
           <button class="btn btn-secondary btn-sm" onclick="chiudiDettaglio()">✕ Chiudi</button>
         </div>
       </div>
@@ -207,7 +208,7 @@
   function renderListaOperai(lista) {
     const el = document.getElementById('listaOperai');
     if (lista.length === 0) {
-      el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);">Nessun operaio registrato</div>';
+      el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);">Nessun tecnico registrato</div>';
       return;
     }
 
@@ -292,7 +293,7 @@
   // ── PDF TUTTI GLI OPERAI ──
   window.scaricaPDFTutti = async function() {
     const lista = window._operaiConOre;
-    if (!lista || lista.length === 0) { showToast('Nessun operaio trovato', true); return; }
+    if (!lista || lista.length === 0) { showToast('Nessun tecnico trovato', true); return; }
 
     const btn = document.getElementById('btnPdfAll');
     btn.disabled = true;
@@ -328,7 +329,7 @@
       doc2.setTextColor(200,200,200);
       doc2.setFontSize(10);
       const nome = op.nomeCompleto || `${op.nome} ${op.cognome}`;
-      doc2.text(`Operaio: ${nome}   |   Email: ${op.email}`, mg+4, 40);
+      doc2.text(`Tecnico: ${nome}   |   Email: ${op.email}`, mg+4, 40);
 
       let y = 54;
 
@@ -397,10 +398,10 @@
       primo = false;
     }
 
-    doc2.save(`ore_tutti_operai_${MESI[viewMonth]}_${viewYear}.pdf`);
+    doc2.save(`ore_tutti_tecnici_${MESI[viewMonth]}_${viewYear}.pdf`);
     showToast('✓ PDF scaricato!');
     btn.disabled = false;
-    btn.innerHTML = `<span>⬇</span> SCARICA PDF TUTTI GLI OPERAI — <span>${MESI[viewMonth]} ${viewYear}</span>`;
+    btn.innerHTML = `<span>⬇</span> SCARICA PDF TUTTI I TECNICI — <span>${MESI[viewMonth]} ${viewYear}</span>`;
   };
 
   // ── PDF OPERAIO ──
@@ -428,7 +429,7 @@
     doc2.setTextColor(200,200,200);
     doc2.setFontSize(10);
     const nome = selectedOperaio.nomeCompleto || `${selectedOperaio.nome} ${selectedOperaio.cognome}`;
-    doc2.text(`Operaio: ${nome}   |   Email: ${selectedOperaio.email}`, mg+4, 40);
+    doc2.text(`Tecnico: ${nome}   |   Email: ${selectedOperaio.email}`, mg+4, 40);
 
     let y = 54;
     doc2.setFillColor(40,40,40);

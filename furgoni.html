@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Revisioni Furgoni – Gama Service</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    /* ── FURGONI SPECIFICI ── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .page-header h2 { font-size: 22px; font-weight: 700; }
+    .page-header .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--orange);
+      background: var(--orange-light);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 40px; margin-bottom: 10px; }
+    .upload-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .upload-sub { font-size: 12px; color: var(--muted); }
+
+    /* Preview + AI result */
+    .ai-panel {
+      display: none;
+      gap: 20px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .ai-panel.show { display: flex; }
+    .ai-preview {
+      flex: 0 0 180px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+      font-size: 40px;
+    }
+    .ai-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ai-result { flex: 1; min-width: 240px; }
+    .ai-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--muted2);
+      margin-bottom: 14px;
+    }
+    .ai-status .spinner { width: 16px; height: 16px; border-width: 2px; }
+
+    /* Form furgone */
+    .furgone-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 600px) { .furgone-form { grid-template-columns: 1fr; } }
+    .furgone-form .full { grid-column: 1 / -1; }
+
+    /* Lista furgoni */
+    .furgoni-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .furgone-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+    .furgone-card:hover { border-color: var(--orange-border); }
+    .furgone-card.scaduto { border-color: #ff3d3d55; background: #ff3d3d08; }
+    .furgone-card.presto  { border-color: #ffaa0055; background: #ffaa0008; }
+    .furgone-card.ok      { border-color: #00c85355; }
+
+    .fc-targa {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px;
+      letter-spacing: 3px;
+      color: var(--orange);
+      margin-bottom: 4px;
+    }
+    .fc-modello { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+    .fc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .fc-row span:last-child { color: var(--text); font-weight: 500; }
+    .fc-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    .badge-red    { background: #ff3d3d22; color: #ff3d3d; }
+    .badge-yellow { background: #ffaa0022; color: #ffaa00; }
+    .badge-green  { background: #00c85322; color: #00c853; }
+
+    .fc-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .btn-icon {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted2);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+      flex: 1;
+      text-align: center;
+    }
+    .btn-icon:hover { border-color: var(--orange); color: var(--orange); }
+    .btn-icon.danger:hover { border-color: var(--red); color: var(--red); }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    /* Email config banner */
+    .config-banner {
+      background: var(--surface2);
+      border: 1px solid var(--orange-border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .config-banner .icon { font-size: 22px; flex-shrink: 0; }
+    .config-banner a { color: var(--orange); }
+
+    /* Notifiche log */
+    .notif-log {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--muted);
+      max-height: 120px;
+      overflow-y: auto;
+      margin-top: 14px;
+      font-family: monospace;
+    }
+    .notif-log .ok  { color: var(--green); }
+    .notif-log .err { color: var(--red); }
+    .notif-log .info{ color: var(--muted2); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">GAMA<span>SERVICE</span></div>
+  <div class="topbar-right">
+    <span style="color:var(--orange);font-size:12px;font-weight:600;">REVISIONI FURGONI</span>
+    <a href="admin.html" style="color:var(--muted2);text-decoration:none;font-size:12px;">← Admin</a>
+    <button class="btn-logout" onclick="doLogout()">Esci</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- BANNER CONFIGURAZIONE EMAIL -->
+  <div class="config-banner" id="configBanner">
+    <span class="icon">⚙️</span>
+    <div style="flex:1;">
+      <strong style="color:var(--text);">Configura le email automatiche</strong><br>
+      Inserisci le tue credenziali <a href="https://www.emailjs.com" target="_blank">EmailJS</a> (gratuito, 200 email/mese) e l'email destinatario.
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="apriConfigEmail()">⚙ Configura</button>
+  </div>
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div>
+      <h2>🚐 Revisioni Furgoni</h2>
+      <div class="sub" id="subStats">Caricamento...</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="apriModalAggiungi()">+ Aggiungi furgone</button>
+  </div>
+
+  <!-- LISTA FURGONI -->
+  <div id="furgoniContainer">
+    <div class="empty-state">
+      <div class="big">🚐</div>
+      <p>Nessun furgone ancora aggiunto.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: AGGIUNGI / MODIFICA FURGONE
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalFurgone">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modalTitolo">Aggiungi furgone</span>
+      <button class="modal-close" onclick="chiudiModal()">✕</button>
+    </div>
+
+    <!-- UPLOAD LIBRETTO -->
+    <div id="uploadSection">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/*,application/pdf" onchange="onFileSelected(event)"/>
+        <div class="upload-icon">📄</div>
+        <div class="upload-title">Carica il libretto</div>
+        <div class="upload-sub">Trascina qui oppure clicca · JPG, PNG, PDF</div>
+      </div>
+
+      <!-- AI panel -->
+      <div class="ai-panel" id="aiPanel">
+        <div class="ai-preview" id="aiPreview">📄</div>
+        <div class="ai-result">
+          <div class="ai-status" id="aiStatus">
+            <span class="spinner"></span>
+            <span id="aiStatusText">Analisi del documento in corso...</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin:14px 0;font-size:12px;color:var(--muted);">
+        — oppure inserisci manualmente —
+      </div>
+    </div>
+
+    <!-- FORM -->
+    <div class="furgone-form" id="furgoneForm">
+      <div class="form-group">
+        <label>Targa *</label>
+        <input type="text" id="fTarga" placeholder="es. AB123CD" style="text-transform:uppercase;"/>
+      </div>
+      <div class="form-group">
+        <label>Modello</label>
+        <input type="text" id="fModello" placeholder="es. Fiat Ducato"/>
+      </div>
+      <div class="form-group">
+        <label>Data scadenza revisione *</label>
+        <input type="date" id="fScadenza"/>
+      </div>
+      <div class="form-group">
+        <label>Anno immatricolazione</label>
+        <input type="text" id="fAnno" placeholder="es. 2018"/>
+      </div>
+      <div class="form-group full">
+        <label>Note</label>
+        <input type="text" id="fNote" placeholder="es. Furgone officina"/>
+      </div>
+    </div>
+
+    <div class="alert alert-error" id="modalError"></div>
+
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="salvaFurgone()">💾 Salva</button>
+      <button class="btn btn-secondary" onclick="chiudiModal()">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: CONFIGURA EMAIL
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalEmail">
+  <div class="modal">
+    <div class="modal-title">
+      <span>⚙️ Configura Email Automatiche</span>
+      <button class="modal-close" onclick="chiudiModalEmail()">✕</button>
+    </div>
+
+    <p style="font-size:13px;color:var(--muted2);margin-bottom:18px;">
+      Le notifiche vengono inviate automaticamente <strong style="color:var(--text);">1 mese prima</strong>,
+      <strong style="color:var(--text);">15 giorni prima</strong> e
+      <strong style="color:var(--text);">il giorno stesso</strong> della scadenza revisione,
+      ogni volta che apri questa pagina.
+    </p>
+
+    <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:18px;font-size:12px;color:var(--muted2);">
+      <strong style="color:var(--text);">Come ottenere le credenziali EmailJS (gratis):</strong><br>
+      1. Vai su <a href="https://www.emailjs.com" target="_blank" style="color:var(--orange);">emailjs.com</a> → Registrati<br>
+      2. <em>Email Services</em> → Add Service → Gmail (o altro) → copia il <strong>Service ID</strong><br>
+      3. <em>Email Templates</em> → Create → copia il <strong>Template ID</strong><br>
+      &nbsp;&nbsp;&nbsp;Nel template usa le variabili: <code>{{targa}}</code> <code>{{modello}}</code> <code>{{scadenza}}</code> <code>{{giorni_mancanti}}</code><br>
+      4. <em>Account</em> → API Keys → copia la <strong>Public Key</strong>
+    </div>
+
+    <div class="furgone-form">
+      <div class="form-group full">
+        <label>Email destinatario (admin) *</label>
+        <input type="email" id="cfgEmail" placeholder="admin@gama-service.com"/>
+      </div>
+      <div class="form-group full">
+        <label>EmailJS Public Key *</label>
+        <input type="text" id="cfgPublicKey" placeholder="es. abc123XYZ..."/>
+      </div>
+      <div class="form-group">
+        <label>Service ID *</label>
+        <input type="text" id="cfgServiceId" placeholder="es. service_xxx"/>
+      </div>
+      <div class="form-group">
+        <label>Template ID *</label>
+        <input type="text" id="cfgTemplateId" placeholder="es. template_xxx"/>
+      </div>
+    </div>
+
+    <div class="alert alert-error" id="emailError"></div>
+
+    <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="salvaConfigEmail()">
+      💾 Salva configurazione
+    </button>
+
+    <!-- Log notifiche -->
+    <div id="notifLog" style="display:none;">
+      <div style="font-size:11px;color:var(--muted);margin-top:16px;margin-bottom:6px;">Log ultime notifiche:</div>
+      <div class="notif-log" id="logContent"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════════════════ -->
+<script type="module">
+import { auth, db } from './js/firebase-config.js';
+import {
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── COSTANTI ──────────────────────────────────────────
+const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+const COLL_FURGONI  = 'furgoni';
+const COLL_NOTIFICHE = 'notifiche_revisioni';
+
+let currentUser = null;
+let furgoniData  = [];
+let editingId    = null;
+
+// ── AUTH ──────────────────────────────────────────────
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  const snap = await getDoc(doc(db, 'utenti', user.uid));
+  if (!snap.exists() || snap.data().ruolo !== 'admin') {
+    window.location.href = 'operaio.html'; return;
+  }
+  currentUser = user;
+  caricaConfigEmail();
+  await caricaFurgoni();
+  await controllaScadenze();
+});
+
+// ── CARICA FURGONI DA FIRESTORE ───────────────────────
+async function caricaFurgoni() {
+  const snap = await getDocs(collection(db, COLL_FURGONI));
+  furgoniData = [];
+  snap.forEach(d => furgoniData.push({ id: d.id, ...d.data() }));
+  furgoniData.sort((a,b) => new Date(a.scadenza) - new Date(b.scadenza));
+  renderFurgoni();
+}
+
+// ── RENDER FURGONI ────────────────────────────────────
+function renderFurgoni() {
+  const el  = document.getElementById('furgoniContainer');
+  const sub = document.getElementById('subStats');
+
+  if (furgoniData.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">🚐</div><p>Nessun furgone ancora aggiunto.</p></div>`;
+    sub.textContent = '0 furgoni registrati';
+    return;
+  }
+
+  const oggi    = new Date(); oggi.setHours(0,0,0,0);
+  let scaduti   = 0, inScadenza = 0;
+
+  const cards = furgoniData.map(f => {
+    const sc     = new Date(f.scadenza); sc.setHours(0,0,0,0);
+    const giorni = Math.round((sc - oggi) / 86400000);
+    let stato, badgeClass, badgeLabel, cardClass;
+
+    if (giorni < 0) {
+      stato = 'scaduto'; badgeClass = 'badge-red';
+      badgeLabel = `⚠ SCADUTA da ${Math.abs(giorni)} giorni`;
+      cardClass = 'scaduto'; scaduti++;
+    } else if (giorni <= 30) {
+      stato = 'presto'; badgeClass = 'badge-yellow';
+      badgeLabel = giorni === 0 ? '⚡ Scade OGGI' : `⏰ Scade tra ${giorni} giorni`;
+      cardClass = 'presto'; inScadenza++;
+    } else {
+      stato = 'ok'; badgeClass = 'badge-green';
+      badgeLabel = `✓ Scade tra ${giorni} giorni`;
+      cardClass = 'ok';
+    }
+
+    const dataFmt = new Date(f.scadenza).toLocaleDateString('it-IT', {day:'2-digit',month:'long',year:'numeric'});
+
+    return `
+      <div class="furgone-card ${cardClass}">
+        <div class="fc-targa">${f.targa}</div>
+        <div class="fc-modello">${f.modello || '—'}</div>
+        <div class="fc-row"><span>Scadenza revisione</span><span>${dataFmt}</span></div>
+        ${f.anno ? `<div class="fc-row"><span>Anno immatricolazione</span><span>${f.anno}</span></div>` : ''}
+        ${f.note ? `<div class="fc-row"><span>Note</span><span>${f.note}</span></div>` : ''}
+        <div><span class="fc-badge ${badgeClass}">${badgeLabel}</span></div>
+        <div class="fc-actions">
+          <button class="btn-icon" onclick="window.modificaFurgone('${f.id}')">✏ Modifica</button>
+          <button class="btn-icon danger" onclick="window.eliminaFurgone('${f.id}')">🗑 Elimina</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="furgoni-grid">${cards}</div>`;
+  sub.textContent = `${furgoniData.length} furgoni · ${scaduti} scaduti · ${inScadenza} in scadenza (≤30gg)`;
+}
+
+// ── MODAL AGGIUNGI ─────────────────────────────────────
+window.apriModalAggiungi = function() {
+  editingId = null;
+  document.getElementById('modalTitolo').textContent = 'Aggiungi furgone';
+  document.getElementById('uploadSection').style.display = '';
+  document.getElementById('aiPanel').classList.remove('show');
+  document.getElementById('fTarga').value    = '';
+  document.getElementById('fModello').value  = '';
+  document.getElementById('fScadenza').value = '';
+  document.getElementById('fAnno').value     = '';
+  document.getElementById('fNote').value     = '';
+  document.getElementById('modalError').classList.remove('show');
+  document.getElementById('fileInput').value = '';
+  document.getElementById('modalFurgone').classList.add('show');
+};
+
+window.chiudiModal = function() {
+  document.getElementById('modalFurgone').classList.remove('show');
+};
+
+window.modificaFurgone = function(id) {
+  const f = furgoniData.find(x => x.id === id);
+  if (!f) return;
+  editingId = id;
+  document.getElementById('modalTitolo').textContent = `Modifica – ${f.targa}`;
+  document.getElementById('uploadSection').style.display = 'none';
+  document.getElementById('fTarga').value    = f.targa    || '';
+  document.getElementById('fModello').value  = f.modello  || '';
+  document.getElementById('fScadenza').value = f.scadenza || '';
+  document.getElementById('fAnno').value     = f.anno     || '';
+  document.getElementById('fNote').value     = f.note     || '';
+  document.getElementById('modalError').classList.remove('show');
+  document.getElementById('modalFurgone').classList.add('show');
+};
+
+// ── SALVA FURGONE ──────────────────────────────────────
+window.salvaFurgone = async function() {
+  const targa    = document.getElementById('fTarga').value.trim().toUpperCase();
+  const modello  = document.getElementById('fModello').value.trim();
+  const scadenza = document.getElementById('fScadenza').value;
+  const anno     = document.getElementById('fAnno').value.trim();
+  const note     = document.getElementById('fNote').value.trim();
+
+  const errEl = document.getElementById('modalError');
+  if (!targa || !scadenza) {
+    errEl.textContent = 'Targa e data scadenza sono obbligatorie.';
+    errEl.classList.add('show'); return;
+  }
+  errEl.classList.remove('show');
+
+  const id  = editingId || targa.replace(/\s/g,'_');
+  const ref = doc(db, COLL_FURGONI, id);
+  await setDoc(ref, { targa, modello, scadenza, anno, note, aggiornato: serverTimestamp() }, { merge: true });
+
+  showToast(editingId ? '✓ Furgone aggiornato!' : '✓ Furgone aggiunto!');
+  chiudiModal();
+  await caricaFurgoni();
+};
+
+// ── ELIMINA FURGONE ────────────────────────────────────
+window.eliminaFurgone = async function(id) {
+  const f = furgoniData.find(x => x.id === id);
+  if (!f) return;
+  if (!confirm(`Eliminare il furgone ${f.targa}?`)) return;
+  await deleteDoc(doc(db, COLL_FURGONI, id));
+  showToast('Furgone eliminato.');
+  await caricaFurgoni();
+};
+
+// ── UPLOAD + AI ────────────────────────────────────────
+window.onFileSelected = async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const panel   = document.getElementById('aiPanel');
+  const preview = document.getElementById('aiPreview');
+  const status  = document.getElementById('aiStatusText');
+
+  panel.classList.add('show');
+
+  // Preview immagine
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      preview.innerHTML = `<img src="${ev.target.result}" alt="libretto"/>`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    preview.innerHTML = '📄';
+  }
+
+  status.textContent = 'Analisi del documento con AI...';
+  document.getElementById('aiStatus').querySelector('.spinner').style.display = '';
+
+  try {
+    // Converti a base64
+    const b64 = await fileToBase64(file);
+    const isPdf = file.type === 'application/pdf';
+
+    // Chiama Claude API
+    const body = {
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          isPdf
+            ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
+            : { type: 'image',    source: { type: 'base64', media_type: file.type,            data: b64 } },
+          {
+            type: 'text',
+            text: `Analizza questo documento (libretto di circolazione italiano o documento veicolo).
+Estrai SOLO questi dati e rispondi UNICAMENTE in JSON valido, senza testo aggiuntivo, senza backtick markdown:
+{
+  "targa": "targa del veicolo (formato italiano es. AB123CD) o null",
+  "modello": "marca e modello (es. Fiat Ducato) o null",
+  "anno_immatricolazione": "anno a 4 cifre o null",
+  "data_scadenza_revisione": "data in formato YYYY-MM-DD se presente, altrimenti null"
+}
+Se non riesci a leggere un campo metti null.`
+          }
+        ]
+      }]
+    };
+
+    const resp = await fetch(ANTHROPIC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    const text = data.content?.find(c => c.type === 'text')?.text || '';
+
+    let parsed = {};
+    try {
+      const clean = text.replace(/```json|```/g,'').trim();
+      parsed = JSON.parse(clean);
+    } catch {
+      throw new Error('Risposta AI non interpretabile.');
+    }
+
+    // Popola form
+    if (parsed.targa)                     document.getElementById('fTarga').value    = parsed.targa.toUpperCase();
+    if (parsed.modello)                   document.getElementById('fModello').value  = parsed.modello;
+    if (parsed.anno_immatricolazione)     document.getElementById('fAnno').value     = parsed.anno_immatricolazione;
+    if (parsed.data_scadenza_revisione)   document.getElementById('fScadenza').value = parsed.data_scadenza_revisione;
+
+    const trovati = [
+      parsed.targa            ? `Targa: ${parsed.targa}` : null,
+      parsed.modello          ? `Modello: ${parsed.modello}` : null,
+      parsed.data_scadenza_revisione ? `Scadenza: ${parsed.data_scadenza_revisione}` : null,
+    ].filter(Boolean).join(' · ');
+
+    status.textContent = trovati
+      ? `✓ Dati rilevati: ${trovati}`
+      : '⚠ Nessun dato leggibile, compila manualmente.';
+    document.getElementById('aiStatus').querySelector('.spinner').style.display = 'none';
+
+  } catch(err) {
+    status.textContent = `⚠ Errore AI: ${err.message}. Compila manualmente.`;
+    document.getElementById('aiStatus').querySelector('.spinner').style.display = 'none';
+  }
+};
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Lettura file fallita'));
+    r.readAsDataURL(file);
+  });
+}
+
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) { document.getElementById('fileInput').files = e.dataTransfer.files; onFileSelected({ target: { files: [file] } }); }
+});
+
+// ── CONFIGURA EMAIL ────────────────────────────────────
+function caricaConfigEmail() {
+  const cfg = JSON.parse(localStorage.getItem('gamaEmailConfig') || '{}');
+  if (cfg.email && cfg.publicKey && cfg.serviceId && cfg.templateId) {
+    document.getElementById('configBanner').style.display = 'none';
+    emailjs.init(cfg.publicKey);
+  }
+  // Popola campi modal
+  if (cfg.email)      document.getElementById('cfgEmail').value      = cfg.email;
+  if (cfg.publicKey)  document.getElementById('cfgPublicKey').value  = cfg.publicKey;
+  if (cfg.serviceId)  document.getElementById('cfgServiceId').value  = cfg.serviceId;
+  if (cfg.templateId) document.getElementById('cfgTemplateId').value = cfg.templateId;
+}
+
+window.apriConfigEmail  = () => document.getElementById('modalEmail').classList.add('show');
+window.chiudiModalEmail = () => document.getElementById('modalEmail').classList.remove('show');
+
+window.salvaConfigEmail = function() {
+  const email      = document.getElementById('cfgEmail').value.trim();
+  const publicKey  = document.getElementById('cfgPublicKey').value.trim();
+  const serviceId  = document.getElementById('cfgServiceId').value.trim();
+  const templateId = document.getElementById('cfgTemplateId').value.trim();
+  const errEl      = document.getElementById('emailError');
+
+  if (!email || !publicKey || !serviceId || !templateId) {
+    errEl.textContent = 'Compila tutti i campi.';
+    errEl.classList.add('show'); return;
+  }
+  errEl.classList.remove('show');
+
+  localStorage.setItem('gamaEmailConfig', JSON.stringify({ email, publicKey, serviceId, templateId }));
+  emailjs.init(publicKey);
+  document.getElementById('configBanner').style.display = 'none';
+  showToast('✓ Configurazione salvata!');
+  chiudiModalEmail();
+};
+
+// ── CONTROLLO SCADENZE E INVIO EMAIL ──────────────────
+async function controllaScadenze() {
+  const cfg = JSON.parse(localStorage.getItem('gamaEmailConfig') || '{}');
+  if (!cfg.email || !cfg.publicKey || !cfg.serviceId || !cfg.templateId) return;
+
+  const oggi     = new Date(); oggi.setHours(0,0,0,0);
+  const oggiStr  = oggi.toISOString().split('T')[0];
+  const log      = [];
+
+  for (const f of furgoniData) {
+    if (!f.scadenza) continue;
+    const sc     = new Date(f.scadenza); sc.setHours(0,0,0,0);
+    const giorni = Math.round((sc - oggi) / 86400000);
+
+    // Invia solo per: 30gg, 15gg, 0gg (e scaduti: -1)
+    const soglie = [30, 15, 0];
+    if (!soglie.includes(giorni) && giorni !== -1) continue;
+
+    // Chiave univoca per non rispedire lo stesso giorno
+    const chiaveNotif = `notif_${f.id}_${oggiStr}_${giorni}`;
+    const notifRef    = doc(db, COLL_NOTIFICHE, chiaveNotif);
+    const notifSnap   = await getDoc(notifRef);
+    if (notifSnap.exists()) continue; // già inviata oggi
+
+    // Invia email
+    const dataFmt = new Date(f.scadenza).toLocaleDateString('it-IT', {day:'2-digit',month:'long',year:'numeric'});
+    let oggetto;
+    if (giorni === 0)       oggetto = `⚡ OGGI revisione furgone ${f.targa}`;
+    else if (giorni === -1) oggetto = `⚠ SCADUTA revisione furgone ${f.targa}`;
+    else                    oggetto = `⏰ Revisione furgone ${f.targa} tra ${giorni} giorni`;
+
+    try {
+      await emailjs.send(cfg.serviceId, cfg.templateId, {
+        to_email:        cfg.email,
+        oggetto,
+        targa:           f.targa,
+        modello:         f.modello || '—',
+        scadenza:        dataFmt,
+        giorni_mancanti: giorni >= 0 ? `${giorni}` : `SCADUTA da ${Math.abs(giorni)} giorni`,
+        note:            f.note || ''
+      });
+
+      // Segna come inviata
+      await setDoc(notifRef, { inviata: serverTimestamp(), targa: f.targa, giorni });
+      log.push({ ok: true, msg: `✓ Email inviata: ${f.targa} (${giorni >= 0 ? giorni+'gg' : 'SCADUTA'})` });
+    } catch(err) {
+      log.push({ ok: false, msg: `✗ Errore email ${f.targa}: ${err.text || err.message}` });
+    }
+  }
+
+  if (log.length > 0) {
+    mostraLog(log);
+    showToast(`📧 ${log.filter(l=>l.ok).length} email di revisione inviate`);
+  }
+}
+
+function mostraLog(log) {
+  const wrap = document.getElementById('notifLog');
+  const el   = document.getElementById('logContent');
+  wrap.style.display = '';
+  el.innerHTML = log.map(l =>
+    `<div class="${l.ok ? 'ok' : 'err'}">${l.msg}</div>`
+  ).join('');
+}
+
+// ── LOGOUT ────────────────────────────────────────────
+window.doLogout = async function() {
+  await signOut(auth);
+  window.location.href = 'index.html';
+};
+
+// ── TOAST ─────────────────────────────────────────────
+function showToast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (err ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+window.showToast = showToast;
+</script>
+</body>
+</html>
