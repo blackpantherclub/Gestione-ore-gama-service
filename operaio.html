@@ -72,7 +72,7 @@
             <th>Pausa pranzo (min)</th>
             <th>Straordinario</th>
             <th>Ore totali</th>
-            <th>Note</th>
+            <th>Cantiere</th>
           </tr>
         </thead>
         <tbody id="tbodyOre"></tbody>
@@ -212,9 +212,9 @@
         </td>
         <td class="totale" id="tot-${g}">${r.totale}</td>
         <td>
-          <input type="text" value="${r.note||''}" placeholder="note..."
-            style="width:130px;"
-            onchange="aggiornaRiga(${g},'note',this.value)"/>
+          <input type="text" value="${r.note||''}" placeholder="cantiere..."
+            style="width:130px;${(r.partenza && r.fine && !r.note) ? 'border-color:var(--red);outline:1px solid var(--red);' : ''}"
+            onchange="aggiornaRiga(${g},'note',this.value); if(this.value){this.style.borderColor='';this.style.outline='';}else if(datiMese[${g}].partenza&&datiMese[${g}].fine){this.style.borderColor='var(--red)';this.style.outline='1px solid var(--red)';}"/>
         </td>
       `;
       tbody.appendChild(tr);
@@ -302,13 +302,49 @@
     }, { merge: true });
   }
 
+  function validaCantieri() {
+    // Controlla solo i giorni che hanno partenza E fine compilate
+    const righeIncomplete = [];
+    Object.entries(datiMese).forEach(([g, r]) => {
+      if (r.partenza && r.fine && !r.note) {
+        righeIncomplete.push(g);
+      }
+    });
+    // Evidenzia in rosso i campi cantiere vuoti sulle righe lavorate
+    const giorniNelMese = new Date(viewYear, viewMonth+1, 0).getDate();
+    for (let g = 1; g <= giorniNelMese; g++) {
+      const r = datiMese[g];
+      const inputs = document.querySelectorAll(`#tbodyOre tr:nth-child(${g}) input[type="text"]:last-of-type`);
+      inputs.forEach(inp => {
+        if (r && r.partenza && r.fine && !r.note) {
+          inp.style.borderColor = 'var(--red)';
+          inp.style.outline = '1px solid var(--red)';
+        } else {
+          inp.style.borderColor = '';
+          inp.style.outline = '';
+        }
+      });
+    }
+    return righeIncomplete;
+  }
+
   window.salvaTutto = async function() {
+    const mancanti = validaCantieri();
+    if (mancanti.length > 0) {
+      showToast(`⚠ Cantiere obbligatorio per ${mancanti.length} giorno/i lavorato/i!`, true);
+      return;
+    }
     await salvaSilenzioso();
     showToast('✓ Salvato!');
   };
 
   // ── PDF ──
   window.scaricaPDF = async function() {
+    const mancanti = validaCantieri();
+    if (mancanti.length > 0) {
+      showToast(`⚠ Compila il cantiere per tutti i giorni lavorati prima di scaricare il PDF!`, true);
+      return;
+    }
     await salvaSilenzioso();
     const { jsPDF } = window.jspdf;
     const doc2 = new jsPDF();
@@ -342,7 +378,7 @@
     doc2.setTextColor(120,120,120);
     doc2.setFontSize(8);
     doc2.setFont('helvetica','bold');
-    ['GIORNO','PARTENZA','FINE','PAUSA','STRAORD.','ORE TOT','NOTE'].forEach((h,i) => {
+    ['GIORNO','PARTENZA','FINE','PAUSA','STRAORD.','ORE TOT','CANTIERE'].forEach((h,i) => {
       const xs = [mg+2, mg+30, mg+56, mg+82, mg+104, mg+130, mg+155];
       doc2.text(h, xs[i], y);
     });

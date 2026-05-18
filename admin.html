@@ -110,12 +110,23 @@
               <th>Pausa (min)</th>
               <th>Straordinario</th>
               <th>Ore totali</th>
-              <th>Note</th>
+              <th>Cantiere</th>
             </tr>
           </thead>
           <tbody id="tbodyDettaglio"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- SEZIONE REVISIONI FURGONI -->
+  <div class="card" style="margin-top:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div class="card-title" style="margin-bottom:0;">— 🚐 Revisioni Furgoni</div>
+      <a href="furgoni.html" class="btn btn-secondary btn-sm" style="text-decoration:none;">Gestisci →</a>
+    </div>
+    <div id="furgoniPreview">
+      <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">Caricamento...</div>
     </div>
   </div>
 
@@ -150,6 +161,7 @@
     }
     aggiornaLabel();
     caricaOperai();
+    caricaFurgoniPreview();
   });
 
   function aggiornaLabel() {
@@ -340,7 +352,7 @@
       doc2.setFontSize(8);
       doc2.setFont('helvetica','bold');
       const xs = [mg+2,mg+30,mg+56,mg+82,mg+104,mg+130,mg+155];
-      ['GIORNO','PARTENZA','FINE','PAUSA','STRAORD.','ORE TOT','NOTE'].forEach((h,i)=>{
+      ['GIORNO','PARTENZA','FINE','PAUSA','STRAORD.','ORE TOT','CANTIERE'].forEach((h,i)=>{
         doc2.text(h, xs[i], y);
       });
       y += 7;
@@ -437,7 +449,7 @@
     doc2.setTextColor(120,120,120);
     doc2.setFontSize(8);
     doc2.setFont('helvetica','bold');
-    ['GIORNO','PARTENZA','FINE','PAUSA','STRAORD.','ORE TOT','NOTE'].forEach((h,i)=>{
+    ['GIORNO','PARTENZA','FINE','PAUSA','STRAORD.','ORE TOT','CANTIERE'].forEach((h,i)=>{
       const xs=[mg+2,mg+30,mg+56,mg+82,mg+104,mg+130,mg+155];
       doc2.text(h,xs[i],y);
     });
@@ -500,6 +512,54 @@
   function formatMin(mins) {
     const h=Math.floor(mins/60),m=mins%60;
     return m>0?`${h}h ${m}m`:`${h}h`;
+  }
+
+  // ── FURGONI PREVIEW ──
+  async function caricaFurgoniPreview() {
+    const el   = document.getElementById('furgoniPreview');
+    const snap = await getDocs(collection(db, 'furgoni'));
+    const oggi = new Date(); oggi.setHours(0,0,0,0);
+
+    if (snap.empty) {
+      el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">Nessun furgone registrato. <a href="furgoni.html" style="color:var(--orange);">Aggiungi →</a></div>';
+      return;
+    }
+
+    let rows = '';
+    snap.forEach(d => {
+      const f      = d.data();
+      const sc     = new Date(f.scadenza); sc.setHours(0,0,0,0);
+      const giorni = Math.round((sc - oggi) / 86400000);
+      const dataFmt = sc.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit', year:'numeric'});
+
+      let colore, badge;
+      if (giorni < 0)       { colore = '#ff3d3d'; badge = `SCADUTA da ${Math.abs(giorni)}gg`; }
+      else if (giorni <= 30) { colore = '#ffaa00'; badge = giorni === 0 ? 'OGGI' : `${giorni}gg`; }
+      else                   { colore = '#00c853'; badge = `${giorni}gg`; }
+
+      rows += `
+        <tr>
+          <td style="font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;color:var(--orange);">${f.targa}</td>
+          <td>${f.modello || '—'}</td>
+          <td>${dataFmt}</td>
+          <td><span style="background:${colore}22;color:${colore};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;">${badge}</span></td>
+        </tr>`;
+    });
+
+    el.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Targa</th>
+              <th>Modello</th>
+              <th>Scadenza revisione</th>
+              <th>Stato</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
   }
 
   // ── LOGOUT ──

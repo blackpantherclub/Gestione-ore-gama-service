@@ -328,7 +328,7 @@
         <input type="text" id="fAnno" placeholder="es. 2018"/>
       </div>
       <div class="form-group full">
-        <label>Note</label>
+        <label>Descrizione</label>
         <input type="text" id="fNote" placeholder="es. Furgone officina"/>
       </div>
     </div>
@@ -487,7 +487,7 @@ function renderFurgoni() {
         <div class="fc-modello">${f.modello || '—'}</div>
         <div class="fc-row"><span>Scadenza revisione</span><span>${dataFmt}</span></div>
         ${f.anno ? `<div class="fc-row"><span>Anno immatricolazione</span><span>${f.anno}</span></div>` : ''}
-        ${f.note ? `<div class="fc-row"><span>Note</span><span>${f.note}</span></div>` : ''}
+        ${f.note ? `<div class="fc-row"><span>Descrizione</span><span>${f.note}</span></div>` : ''}
         <div><span class="fc-badge ${badgeClass}">${badgeLabel}</span></div>
         <div class="fc-actions">
           <button class="btn-icon" onclick="window.modificaFurgone('${f.id}')">✏ Modifica</button>
