@@ -9,31 +9,20 @@
   <link rel="stylesheet" href="css/style.css"/>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
-    /* ── FURGONI SPECIFICI ── */
     .page-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-      gap: 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; flex-wrap: wrap; gap: 14px;
     }
     .page-header h2 { font-size: 22px; font-weight: 700; }
     .page-header .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
-    /* Upload zone */
     .upload-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 36px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 36px 20px; text-align: center; cursor: pointer;
+      transition: all 0.2s; position: relative;
     }
     .upload-zone:hover, .upload-zone.drag-over {
-      border-color: var(--orange);
-      background: var(--orange-light);
+      border-color: var(--orange); background: var(--orange-light);
     }
     .upload-zone input[type="file"] {
       position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
@@ -42,193 +31,118 @@
     .upload-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
     .upload-sub { font-size: 12px; color: var(--muted); }
 
-    /* Preview + AI result */
-    .ai-panel {
-      display: none;
-      gap: 20px;
-      margin-top: 20px;
-      flex-wrap: wrap;
-    }
+    .ai-panel { display: none; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
     .ai-panel.show { display: flex; }
     .ai-preview {
-      flex: 0 0 180px;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 120px;
-      font-size: 40px;
+      flex: 0 0 180px; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border); background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      min-height: 120px; font-size: 40px;
     }
     .ai-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .ai-result { flex: 1; min-width: 240px; }
     .ai-status {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: var(--muted2);
-      margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--muted2); margin-bottom: 14px;
     }
     .ai-status .spinner { width: 16px; height: 16px; border-width: 2px; }
 
-    /* Form furgone */
-    .furgone-form {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
+    /* Upload progress libretto */
+    .libretto-progress {
+      font-size: 12px; color: var(--muted2); margin-top: 8px;
+      display: none; align-items: center; gap: 8px;
     }
+    .libretto-progress.show { display: flex; }
+    .libretto-progress .spinner { width: 14px; height: 14px; border-width: 2px; }
+
+    .furgone-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     @media (max-width: 600px) { .furgone-form { grid-template-columns: 1fr; } }
     .furgone-form .full { grid-column: 1 / -1; }
 
-    /* Lista furgoni */
     .furgoni-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 16px;
     }
     .furgone-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      transition: border-color 0.2s;
-      position: relative;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      transition: border-color 0.2s; position: relative;
     }
     .furgone-card:hover { border-color: var(--orange-border); }
     .furgone-card.scaduto { border-color: #ff3d3d55; background: #ff3d3d08; }
     .furgone-card.presto  { border-color: #ffaa0055; background: #ffaa0008; }
     .furgone-card.ok      { border-color: #00c85355; }
 
-    .fc-targa {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 26px;
-      letter-spacing: 3px;
-      color: var(--orange);
-      margin-bottom: 4px;
-    }
+    .fc-targa { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 3px; color: var(--orange); margin-bottom: 4px; }
     .fc-modello { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
-    .fc-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
+    .fc-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     .fc-row span:last-child { color: var(--text); font-weight: 500; }
-    .fc-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-      margin-top: 10px;
-    }
+    .fc-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-top: 10px; }
     .badge-red    { background: #ff3d3d22; color: #ff3d3d; }
     .badge-yellow { background: #ffaa0022; color: #ffaa00; }
     .badge-green  { background: #00c85322; color: #00c853; }
 
-    .fc-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 14px;
+    /* Libretto allegato nella card */
+    .fc-libretto {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 10px; padding: 8px 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12px;
     }
+    .fc-libretto a { color: var(--orange); text-decoration: none; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fc-libretto a:hover { text-decoration: underline; }
+    .btn-del-libretto {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 14px; padding: 2px 4px; line-height: 1;
+      transition: color 0.15s;
+    }
+    .btn-del-libretto:hover { color: #ff3d3d; }
+
+    .fc-actions { display: flex; gap: 8px; margin-top: 14px; }
     .btn-icon {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--muted2);
-      padding: 6px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 12px;
-      font-family: 'Inter', sans-serif;
-      transition: all 0.15s;
-      flex: 1;
-      text-align: center;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted2); padding: 6px 12px; border-radius: 8px;
+      cursor: pointer; font-size: 12px; font-family: 'Inter', sans-serif;
+      transition: all 0.15s; flex: 1; text-align: center;
     }
     .btn-icon:hover { border-color: var(--orange); color: var(--orange); }
     .btn-icon.danger:hover { border-color: var(--red); color: var(--red); }
 
-    /* Modal */
     .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      z-index: 200;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 200; align-items: center; justify-content: center; padding: 20px;
     }
     .modal-overlay.show { display: flex; }
     .modal {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px;
-      width: 100%;
-      max-width: 520px;
-      max-height: 90vh;
-      overflow-y: auto;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px; width: 100%;
+      max-width: 520px; max-height: 90vh; overflow-y: auto;
     }
     .modal-title {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      font-size: 16px; font-weight: 700; margin-bottom: 20px;
+      display: flex; justify-content: space-between; align-items: center;
     }
-    .modal-close {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 20px;
-      cursor: pointer;
-      line-height: 1;
-    }
+    .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
 
-    /* Email config banner */
     .config-banner {
-      background: var(--surface2);
-      border: 1px solid var(--orange-border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 20px;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      background: var(--surface2); border: 1px solid var(--orange-border);
+      border-radius: var(--radius); padding: 16px 20px; margin-bottom: 20px;
+      font-size: 13px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     }
     .config-banner .icon { font-size: 22px; flex-shrink: 0; }
     .config-banner a { color: var(--orange); }
 
-    /* Notifiche log */
     .notif-log {
-      background: var(--surface2);
-      border-radius: 8px;
-      padding: 12px 16px;
-      font-size: 12px;
-      color: var(--muted);
-      max-height: 120px;
-      overflow-y: auto;
-      margin-top: 14px;
-      font-family: monospace;
+      background: var(--surface2); border-radius: 8px; padding: 12px 16px;
+      font-size: 12px; color: var(--muted); max-height: 120px; overflow-y: auto;
+      margin-top: 14px; font-family: monospace;
     }
-    .notif-log .ok  { color: var(--green); }
-    .notif-log .err { color: var(--red); }
-    .notif-log .info{ color: var(--muted2); }
+    .notif-log .ok   { color: var(--green); }
+    .notif-log .err  { color: var(--red); }
+    .notif-log .info { color: var(--muted2); }
 
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--muted);
-    }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
     .empty-state .big { font-size: 48px; margin-bottom: 12px; }
     .empty-state p { font-size: 14px; }
   </style>
@@ -247,7 +161,7 @@
 
 <div class="page">
 
-  <!-- BANNER CONFIGURAZIONE EMAIL -->
+  <!-- BANNER EMAIL -->
   <div class="config-banner" id="configBanner">
     <span class="icon">⚙️</span>
     <div style="flex:1;">
@@ -276,9 +190,7 @@
 
 </div>
 
-<!-- ══════════════════════════════════════
-     MODAL: AGGIUNGI / MODIFICA FURGONE
-══════════════════════════════════════ -->
+<!-- MODAL: AGGIUNGI / MODIFICA -->
 <div class="modal-overlay" id="modalFurgone">
   <div class="modal">
     <div class="modal-title">
@@ -293,6 +205,12 @@
         <div class="upload-icon">📄</div>
         <div class="upload-title">Carica il libretto</div>
         <div class="upload-sub">Trascina qui oppure clicca · JPG, PNG, PDF</div>
+      </div>
+
+      <!-- Progress upload Storage -->
+      <div class="libretto-progress" id="librettoProgress">
+        <span class="spinner"></span>
+        <span id="librettoProgressTxt">Salvataggio libretto...</span>
       </div>
 
       <!-- AI panel -->
@@ -344,32 +262,27 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     MODAL: CONFIGURA EMAIL
-══════════════════════════════════════ -->
+<!-- MODAL: CONFIGURA EMAIL -->
 <div class="modal-overlay" id="modalEmail">
   <div class="modal">
     <div class="modal-title">
       <span>⚙️ Configura Email Automatiche</span>
       <button class="modal-close" onclick="chiudiModalEmail()">✕</button>
     </div>
-
     <p style="font-size:13px;color:var(--muted2);margin-bottom:18px;">
       Le notifiche vengono inviate automaticamente <strong style="color:var(--text);">1 mese prima</strong>,
       <strong style="color:var(--text);">15 giorni prima</strong> e
       <strong style="color:var(--text);">il giorno stesso</strong> della scadenza revisione,
       ogni volta che apri questa pagina.
     </p>
-
     <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:18px;font-size:12px;color:var(--muted2);">
       <strong style="color:var(--text);">Come ottenere le credenziali EmailJS (gratis):</strong><br>
       1. Vai su <a href="https://www.emailjs.com" target="_blank" style="color:var(--orange);">emailjs.com</a> → Registrati<br>
-      2. <em>Email Services</em> → Add Service → Gmail (o altro) → copia il <strong>Service ID</strong><br>
+      2. <em>Email Services</em> → Add Service → Gmail → copia il <strong>Service ID</strong><br>
       3. <em>Email Templates</em> → Create → copia il <strong>Template ID</strong><br>
-      &nbsp;&nbsp;&nbsp;Nel template usa le variabili: <code>{{targa}}</code> <code>{{modello}}</code> <code>{{scadenza}}</code> <code>{{giorni_mancanti}}</code><br>
+      &nbsp;&nbsp;&nbsp;Variabili: <code>{{targa}}</code> <code>{{modello}}</code> <code>{{scadenza}}</code> <code>{{giorni_mancanti}}</code><br>
       4. <em>Account</em> → API Keys → copia la <strong>Public Key</strong>
     </div>
-
     <div class="furgone-form">
       <div class="form-group full">
         <label>Email destinatario (admin) *</label>
@@ -388,14 +301,8 @@
         <input type="text" id="cfgTemplateId" placeholder="es. template_xxx"/>
       </div>
     </div>
-
     <div class="alert alert-error" id="emailError"></div>
-
-    <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="salvaConfigEmail()">
-      💾 Salva configurazione
-    </button>
-
-    <!-- Log notifiche -->
+    <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="salvaConfigEmail()">💾 Salva configurazione</button>
     <div id="notifLog" style="display:none;">
       <div style="font-size:11px;color:var(--muted);margin-top:16px;margin-bottom:6px;">Log ultime notifiche:</div>
       <div class="notif-log" id="logContent"></div>
@@ -405,9 +312,6 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- ══════════════════════════════════════════════════════
-     SCRIPT
-══════════════════════════════════════════════════════ -->
 <script type="module">
 import { auth, db } from './js/firebase-config.js';
 import {
@@ -416,15 +320,22 @@ import {
 import {
   collection, doc, getDoc, getDocs, setDoc, deleteDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getStorage, ref as sRef, uploadBytesResumable, getDownloadURL, deleteObject
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
-// ── COSTANTI ──────────────────────────────────────────
-const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
-const COLL_FURGONI  = 'furgoni';
+const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
+const COLL_FURGONI   = 'furgoni';
 const COLL_NOTIFICHE = 'notifiche_revisioni';
 
-let currentUser = null;
+const storage = getStorage();
+
+let currentUser  = null;
 let furgoniData  = [];
 let editingId    = null;
+
+// Libretto in attesa di essere salvato (dopo analisi AI, prima del salva)
+let pendingLibretto = null; // { file, base64, storagePath, url } oppure null
 
 // ── AUTH ──────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
@@ -439,7 +350,7 @@ onAuthStateChanged(auth, async (user) => {
   await controllaScadenze();
 });
 
-// ── CARICA FURGONI DA FIRESTORE ───────────────────────
+// ── CARICA FURGONI ────────────────────────────────────
 async function caricaFurgoni() {
   const snap = await getDocs(collection(db, COLL_FURGONI));
   furgoniData = [];
@@ -459,29 +370,47 @@ function renderFurgoni() {
     return;
   }
 
-  const oggi    = new Date(); oggi.setHours(0,0,0,0);
-  let scaduti   = 0, inScadenza = 0;
+  const oggi = new Date(); oggi.setHours(0,0,0,0);
+  let scaduti = 0, inScadenza = 0;
 
   const cards = furgoniData.map(f => {
     const sc     = new Date(f.scadenza); sc.setHours(0,0,0,0);
     const giorni = Math.round((sc - oggi) / 86400000);
-    let stato, badgeClass, badgeLabel, cardClass;
+    let badgeClass, badgeLabel, cardClass;
 
     if (giorni < 0) {
-      stato = 'scaduto'; badgeClass = 'badge-red';
+      badgeClass = 'badge-red';
       badgeLabel = `⚠ SCADUTA da ${Math.abs(giorni)} giorni`;
       cardClass = 'scaduto'; scaduti++;
     } else if (giorni <= 30) {
-      stato = 'presto'; badgeClass = 'badge-yellow';
+      badgeClass = 'badge-yellow';
       badgeLabel = giorni === 0 ? '⚡ Scade OGGI' : `⏰ Scade tra ${giorni} giorni`;
       cardClass = 'presto'; inScadenza++;
     } else {
-      stato = 'ok'; badgeClass = 'badge-green';
+      badgeClass = 'badge-green';
       badgeLabel = `✓ Scade tra ${giorni} giorni`;
       cardClass = 'ok';
     }
 
     const dataFmt = new Date(f.scadenza).toLocaleDateString('it-IT', {day:'2-digit',month:'long',year:'numeric'});
+
+    // Sezione libretto allegato
+    let librettoHtml = '';
+    if (f.librettoUrl && f.librettoNome) {
+      librettoHtml = `
+        <div class="fc-libretto">
+          <span>📎</span>
+          <a href="${f.librettoUrl}" target="_blank" title="${f.librettoNome}">${f.librettoNome}</a>
+          <button class="btn-del-libretto" onclick="event.stopPropagation(); eliminaLibretto('${f.id}')" title="Rimuovi libretto">✕</button>
+        </div>`;
+    } else {
+      librettoHtml = `
+        <div class="fc-libretto" style="cursor:pointer;" onclick="apriUploadLibretto('${f.id}')">
+          <span>📎</span>
+          <span style="color:var(--muted);flex:1;">Nessun libretto allegato</span>
+          <span style="color:var(--orange);font-size:11px;font-weight:600;">+ Aggiungi</span>
+        </div>`;
+    }
 
     return `
       <div class="furgone-card ${cardClass}">
@@ -491,6 +420,7 @@ function renderFurgoni() {
         ${f.anno ? `<div class="fc-row"><span>Anno immatricolazione</span><span>${f.anno}</span></div>` : ''}
         ${f.note ? `<div class="fc-row"><span>Descrizione</span><span>${f.note}</span></div>` : ''}
         <div><span class="fc-badge ${badgeClass}">${badgeLabel}</span></div>
+        ${librettoHtml}
         <div class="fc-actions">
           <button class="btn-icon" onclick="window.modificaFurgone('${f.id}')">✏ Modifica</button>
           <button class="btn-icon danger" onclick="window.eliminaFurgone('${f.id}')">🗑 Elimina</button>
@@ -502,12 +432,14 @@ function renderFurgoni() {
   sub.textContent = `${furgoniData.length} furgoni · ${scaduti} scaduti · ${inScadenza} in scadenza (≤30gg)`;
 }
 
-// ── MODAL AGGIUNGI ─────────────────────────────────────
+// ── MODAL AGGIUNGI ────────────────────────────────────
 window.apriModalAggiungi = function() {
   editingId = null;
+  pendingLibretto = null;
   document.getElementById('modalTitolo').textContent = 'Aggiungi furgone';
   document.getElementById('uploadSection').style.display = '';
   document.getElementById('aiPanel').classList.remove('show');
+  document.getElementById('librettoProgress').classList.remove('show');
   document.getElementById('fTarga').value    = '';
   document.getElementById('fModello').value  = '';
   document.getElementById('fScadenza').value = '';
@@ -520,24 +452,29 @@ window.apriModalAggiungi = function() {
 
 window.chiudiModal = function() {
   document.getElementById('modalFurgone').classList.remove('show');
+  pendingLibretto = null;
 };
 
 window.modificaFurgone = function(id) {
   const f = furgoniData.find(x => x.id === id);
   if (!f) return;
   editingId = id;
+  pendingLibretto = null;
   document.getElementById('modalTitolo').textContent = `Modifica – ${f.targa}`;
-  document.getElementById('uploadSection').style.display = 'none';
+  document.getElementById('uploadSection').style.display = '';
+  document.getElementById('aiPanel').classList.remove('show');
+  document.getElementById('librettoProgress').classList.remove('show');
   document.getElementById('fTarga').value    = f.targa    || '';
   document.getElementById('fModello').value  = f.modello  || '';
   document.getElementById('fScadenza').value = f.scadenza || '';
   document.getElementById('fAnno').value     = f.anno     || '';
   document.getElementById('fNote').value     = f.note     || '';
   document.getElementById('modalError').classList.remove('show');
+  document.getElementById('fileInput').value = '';
   document.getElementById('modalFurgone').classList.add('show');
 };
 
-// ── SALVA FURGONE ──────────────────────────────────────
+// ── SALVA FURGONE ─────────────────────────────────────
 window.salvaFurgone = async function() {
   const targa    = document.getElementById('fTarga').value.trim().toUpperCase();
   const modello  = document.getElementById('fModello').value.trim();
@@ -554,24 +491,100 @@ window.salvaFurgone = async function() {
 
   const id  = editingId || targa.replace(/\s/g,'_');
   const ref = doc(db, COLL_FURGONI, id);
-  await setDoc(ref, { targa, modello, scadenza, anno, note, aggiornato: serverTimestamp() }, { merge: true });
+
+  // Dati base
+  const dati = { targa, modello, scadenza, anno, note, aggiornato: serverTimestamp() };
+
+  // Se c'è un libretto in attesa, caricalo su Storage ora
+  if (pendingLibretto) {
+    const prog = document.getElementById('librettoProgress');
+    const txt  = document.getElementById('librettoProgressTxt');
+    prog.classList.add('show');
+    txt.textContent = 'Salvataggio libretto su Firebase...';
+
+    try {
+      const storagePath = `libretti-furgoni/${id}/${Date.now()}_${pendingLibretto.file.name}`;
+      const storageRef  = sRef(storage, storagePath);
+      const uploadTask  = uploadBytesResumable(storageRef, pendingLibretto.file);
+
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed',
+          (snap) => {
+            const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+            txt.textContent = `Salvataggio libretto ${pct}%...`;
+          },
+          reject,
+          resolve
+        );
+      });
+
+      const url = await getDownloadURL(storageRef);
+      dati.librettoUrl     = url;
+      dati.librettoNome    = pendingLibretto.file.name;
+      dati.librettoPath    = storagePath;
+
+      prog.classList.remove('show');
+    } catch(err) {
+      prog.classList.remove('show');
+      errEl.textContent = 'Errore salvataggio libretto: ' + err.message;
+      errEl.classList.add('show');
+      return;
+    }
+  }
+
+  await setDoc(ref, dati, { merge: true });
 
   showToast(editingId ? '✓ Furgone aggiornato!' : '✓ Furgone aggiunto!');
   chiudiModal();
   await caricaFurgoni();
 };
 
-// ── ELIMINA FURGONE ────────────────────────────────────
+// ── ELIMINA FURGONE ───────────────────────────────────
 window.eliminaFurgone = async function(id) {
   const f = furgoniData.find(x => x.id === id);
   if (!f) return;
-  if (!confirm(`Eliminare il furgone ${f.targa}?`)) return;
+  if (!confirm(`Eliminare il furgone ${f.targa}? Verrà eliminato anche il libretto allegato.`)) return;
+
+  // Elimina libretto da Storage se presente
+  if (f.librettoPath) {
+    try { await deleteObject(sRef(storage, f.librettoPath)); } catch(e) { /* ignora se già eliminato */ }
+  }
+
   await deleteDoc(doc(db, COLL_FURGONI, id));
   showToast('Furgone eliminato.');
   await caricaFurgoni();
 };
 
-// ── UPLOAD + AI ────────────────────────────────────────
+// ── ELIMINA SOLO LIBRETTO ─────────────────────────────
+window.eliminaLibretto = async function(id) {
+  const f = furgoniData.find(x => x.id === id);
+  if (!f) return;
+  if (!confirm(`Rimuovere il libretto allegato al furgone ${f.targa}?`)) return;
+
+  try {
+    if (f.librettoPath) await deleteObject(sRef(storage, f.librettoPath));
+  } catch(e) { /* ignora */ }
+
+  const ref = doc(db, COLL_FURGONI, id);
+  // Rimuove i campi libretto
+  await setDoc(ref, {
+    librettoUrl:  null,
+    librettoNome: null,
+    librettoPath: null,
+    aggiornato: serverTimestamp()
+  }, { merge: true });
+
+  showToast('✓ Libretto rimosso.');
+  await caricaFurgoni();
+};
+
+// ── UPLOAD LIBRETTO DA CARD (furgone già esistente) ───
+window.apriUploadLibretto = function(id) {
+  // Apre il modal di modifica direttamente
+  window.modificaFurgone(id);
+};
+
+// ── UPLOAD + AI ───────────────────────────────────────
 window.onFileSelected = async function(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -582,12 +595,9 @@ window.onFileSelected = async function(e) {
 
   panel.classList.add('show');
 
-  // Preview immagine
   if (file.type.startsWith('image/')) {
     const reader = new FileReader();
-    reader.onload = ev => {
-      preview.innerHTML = `<img src="${ev.target.result}" alt="libretto"/>`;
-    };
+    reader.onload = ev => { preview.innerHTML = `<img src="${ev.target.result}" alt="libretto"/>`; };
     reader.readAsDataURL(file);
   } else {
     preview.innerHTML = '📄';
@@ -596,12 +606,13 @@ window.onFileSelected = async function(e) {
   status.textContent = 'Analisi del documento con AI...';
   document.getElementById('aiStatus').querySelector('.spinner').style.display = '';
 
+  // Salva il file in pendingLibretto (verrà caricato su Storage al salva)
+  pendingLibretto = { file };
+
   try {
-    // Converti a base64
-    const b64 = await fileToBase64(file);
+    const b64   = await fileToBase64(file);
     const isPdf = file.type === 'application/pdf';
 
-    // Chiama Claude API
     const body = {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
@@ -639,29 +650,26 @@ Se non riesci a leggere un campo metti null.`
     try {
       const clean = text.replace(/```json|```/g,'').trim();
       parsed = JSON.parse(clean);
-    } catch {
-      throw new Error('Risposta AI non interpretabile.');
-    }
+    } catch { throw new Error('Risposta AI non interpretabile.'); }
 
-    // Popola form
-    if (parsed.targa)                     document.getElementById('fTarga').value    = parsed.targa.toUpperCase();
-    if (parsed.modello)                   document.getElementById('fModello').value  = parsed.modello;
-    if (parsed.anno_immatricolazione)     document.getElementById('fAnno').value     = parsed.anno_immatricolazione;
-    if (parsed.data_scadenza_revisione)   document.getElementById('fScadenza').value = parsed.data_scadenza_revisione;
+    if (parsed.targa)                   document.getElementById('fTarga').value    = parsed.targa.toUpperCase();
+    if (parsed.modello)                 document.getElementById('fModello').value  = parsed.modello;
+    if (parsed.anno_immatricolazione)   document.getElementById('fAnno').value     = parsed.anno_immatricolazione;
+    if (parsed.data_scadenza_revisione) document.getElementById('fScadenza').value = parsed.data_scadenza_revisione;
 
     const trovati = [
-      parsed.targa            ? `Targa: ${parsed.targa}` : null,
-      parsed.modello          ? `Modello: ${parsed.modello}` : null,
+      parsed.targa                   ? `Targa: ${parsed.targa}` : null,
+      parsed.modello                 ? `Modello: ${parsed.modello}` : null,
       parsed.data_scadenza_revisione ? `Scadenza: ${parsed.data_scadenza_revisione}` : null,
     ].filter(Boolean).join(' · ');
 
     status.textContent = trovati
-      ? `✓ Dati rilevati: ${trovati}`
-      : '⚠ Nessun dato leggibile, compila manualmente.';
+      ? `✓ Dati rilevati: ${trovati} · 📎 Libretto allegato`
+      : '⚠ Nessun dato leggibile. Compila manualmente. Il libretto verrà comunque salvato.';
     document.getElementById('aiStatus').querySelector('.spinner').style.display = 'none';
 
   } catch(err) {
-    status.textContent = `⚠ Errore AI: ${err.message}. Compila manualmente.`;
+    status.textContent = `⚠ Errore AI: ${err.message}. Compila manualmente. Il libretto verrà comunque salvato.`;
     document.getElementById('aiStatus').querySelector('.spinner').style.display = 'none';
   }
 };
@@ -685,14 +693,13 @@ zone.addEventListener('drop', e => {
   if (file) { document.getElementById('fileInput').files = e.dataTransfer.files; onFileSelected({ target: { files: [file] } }); }
 });
 
-// ── CONFIGURA EMAIL ────────────────────────────────────
+// ── CONFIGURA EMAIL ───────────────────────────────────
 function caricaConfigEmail() {
   const cfg = JSON.parse(localStorage.getItem('gamaEmailConfig') || '{}');
   if (cfg.email && cfg.publicKey && cfg.serviceId && cfg.templateId) {
     document.getElementById('configBanner').style.display = 'none';
     emailjs.init(cfg.publicKey);
   }
-  // Popola campi modal
   if (cfg.email)      document.getElementById('cfgEmail').value      = cfg.email;
   if (cfg.publicKey)  document.getElementById('cfgPublicKey').value  = cfg.publicKey;
   if (cfg.serviceId)  document.getElementById('cfgServiceId').value  = cfg.serviceId;
@@ -714,7 +721,6 @@ window.salvaConfigEmail = function() {
     errEl.classList.add('show'); return;
   }
   errEl.classList.remove('show');
-
   localStorage.setItem('gamaEmailConfig', JSON.stringify({ email, publicKey, serviceId, templateId }));
   emailjs.init(publicKey);
   document.getElementById('configBanner').style.display = 'none';
@@ -722,31 +728,27 @@ window.salvaConfigEmail = function() {
   chiudiModalEmail();
 };
 
-// ── CONTROLLO SCADENZE E INVIO EMAIL ──────────────────
+// ── CONTROLLO SCADENZE ────────────────────────────────
 async function controllaScadenze() {
   const cfg = JSON.parse(localStorage.getItem('gamaEmailConfig') || '{}');
   if (!cfg.email || !cfg.publicKey || !cfg.serviceId || !cfg.templateId) return;
 
-  const oggi     = new Date(); oggi.setHours(0,0,0,0);
-  const oggiStr  = oggi.toISOString().split('T')[0];
-  const log      = [];
+  const oggi    = new Date(); oggi.setHours(0,0,0,0);
+  const oggiStr = oggi.toISOString().split('T')[0];
+  const log     = [];
 
   for (const f of furgoniData) {
     if (!f.scadenza) continue;
     const sc     = new Date(f.scadenza); sc.setHours(0,0,0,0);
     const giorni = Math.round((sc - oggi) / 86400000);
-
-    // Invia solo per: 30gg, 15gg, 0gg (e scaduti: -1)
     const soglie = [30, 15, 0];
     if (!soglie.includes(giorni) && giorni !== -1) continue;
 
-    // Chiave univoca per non rispedire lo stesso giorno
     const chiaveNotif = `notif_${f.id}_${oggiStr}_${giorni}`;
     const notifRef    = doc(db, COLL_NOTIFICHE, chiaveNotif);
     const notifSnap   = await getDoc(notifRef);
-    if (notifSnap.exists()) continue; // già inviata oggi
+    if (notifSnap.exists()) continue;
 
-    // Invia email
     const dataFmt = new Date(f.scadenza).toLocaleDateString('it-IT', {day:'2-digit',month:'long',year:'numeric'});
     let oggetto;
     if (giorni === 0)       oggetto = `⚡ OGGI revisione furgone ${f.targa}`;
@@ -755,16 +757,12 @@ async function controllaScadenze() {
 
     try {
       await emailjs.send(cfg.serviceId, cfg.templateId, {
-        to_email:        cfg.email,
-        oggetto,
-        targa:           f.targa,
-        modello:         f.modello || '—',
-        scadenza:        dataFmt,
+        to_email: cfg.email, oggetto,
+        targa: f.targa, modello: f.modello || '—',
+        scadenza: dataFmt,
         giorni_mancanti: giorni >= 0 ? `${giorni}` : `SCADUTA da ${Math.abs(giorni)} giorni`,
-        note:            f.note || ''
+        note: f.note || ''
       });
-
-      // Segna come inviata
       await setDoc(notifRef, { inviata: serverTimestamp(), targa: f.targa, giorni });
       log.push({ ok: true, msg: `✓ Email inviata: ${f.targa} (${giorni >= 0 ? giorni+'gg' : 'SCADUTA'})` });
     } catch(err) {
@@ -782,9 +780,7 @@ function mostraLog(log) {
   const wrap = document.getElementById('notifLog');
   const el   = document.getElementById('logContent');
   wrap.style.display = '';
-  el.innerHTML = log.map(l =>
-    `<div class="${l.ok ? 'ok' : 'err'}">${l.msg}</div>`
-  ).join('');
+  el.innerHTML = log.map(l => `<div class="${l.ok ? 'ok' : 'err'}">${l.msg}</div>`).join('');
 }
 
 // ── LOGOUT ────────────────────────────────────────────
