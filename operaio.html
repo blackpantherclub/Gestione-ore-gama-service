@@ -9,6 +9,47 @@
 
   <link rel="stylesheet" href="css/style.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    /* ── BUSTE PAGA ── */
+    .busta-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      gap: 10px;
+    }
+    .busta-item:hover { border-color: var(--orange-border); }
+    .busta-info { flex: 1; min-width: 0; }
+    .busta-nome { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .busta-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .btn-scarica-busta {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted2);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .btn-scarica-busta:hover { border-color: var(--orange); color: var(--orange); }
+    .buste-empty {
+      text-align: center;
+      padding: 30px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
 </head>
 <body>
 
@@ -82,6 +123,16 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════
+       ARCHIVIO BUSTE PAGA
+  ══════════════════════════════════════ -->
+  <div class="card" style="margin-top:20px;">
+    <div class="card-title">— 📎 Archivio Buste Paga</div>
+    <div id="archuvioBuste">
+      <div class="buste-empty"><span class="spinner"></span></div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -92,13 +143,13 @@
     onAuthStateChanged, signOut
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import {
-    doc, getDoc, setDoc, serverTimestamp
+    doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, orderBy
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   let currentUser = null;
   let profilo     = null;
   let viewYear    = new Date().getFullYear();
-  let viewMonth   = new Date().getMonth(); // 0-indexed
+  let viewMonth   = new Date().getMonth();
   let datiMese    = {};
 
   const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
@@ -119,6 +170,7 @@
     document.getElementById('topNome').textContent   = `${profilo.nome} ${profilo.cognome}`;
 
     await caricaMese();
+    await caricaBustePaga();
   });
 
   // ── MESE ──
@@ -133,14 +185,51 @@
   async function caricaMese() {
     const chiave = `${viewYear}_${String(viewMonth+1).padStart(2,'0')}`;
     document.getElementById('monthLabel').textContent = `${MESI[viewMonth]} ${viewYear}`;
-
-    // Carica da Firestore
     const ref  = doc(db, 'utenti', currentUser.uid, 'mesi', chiave);
     const snap = await getDoc(ref);
     datiMese = snap.exists() ? (snap.data().giorni || {}) : {};
-
     creaTabella();
     aggiornaStats();
+  }
+
+  // ── BUSTE PAGA ──
+  async function caricaBustePaga() {
+    const el = document.getElementById('archuvioBuste');
+    try {
+      const snap = await getDocs(
+        query(collection(db, 'utenti', currentUser.uid, 'bustePaga'), orderBy('caricato', 'desc'))
+      );
+
+      if (snap.empty) {
+        el.innerHTML = '<div class="buste-empty">Nessuna busta paga disponibile.<br><span style="font-size:11px;color:var(--muted);">Le buste vengono caricate dall\'amministratore.</span></div>';
+        return;
+      }
+
+      el.innerHTML = '';
+      snap.forEach(d => {
+        const b = d.data();
+        const data = b.caricato?.toDate ? b.caricato.toDate().toLocaleDateString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+        const div = document.createElement('div');
+        div.className = 'busta-item';
+        div.innerHTML = `
+          <div class="busta-info">
+            <div class="busta-nome">📄 ${b.nome}</div>
+            <div class="busta-meta">Caricata il ${data} · ${formatBytes(b.dimensione || 0)}</div>
+          </div>
+          <a class="btn-scarica-busta" href="${b.url}" target="_blank" download="${b.nome}">⬇ Scarica</a>
+        `;
+        el.appendChild(div);
+      });
+    } catch(e) {
+      el.innerHTML = `<div class="buste-empty" style="color:#ff3d3d;">Errore caricamento buste: ${e.message}</div>`;
+    }
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024, sizes = ['B','KB','MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
   // ── GENERA OPZIONI ORA ──
@@ -155,7 +244,6 @@
     return html;
   }
 
-  // ── GENERA OPZIONI PAUSA (10min → 60min step 10) ──
   function opzioniPausa(selezionato) {
     let html = '<option value="">--</option>';
     for (let m = 10; m <= 60; m += 10) {
@@ -175,13 +263,10 @@
 
     for (let g = 1; g <= giorniNelMese; g++) {
       const data    = new Date(viewYear, viewMonth, g);
-      const dow     = data.getDay(); // 0=dom, 6=sab
+      const dow     = data.getDay();
       const weekend = dow === 0 || dow === 6;
       const isOggi  = oggi.getFullYear()===viewYear && oggi.getMonth()===viewMonth && oggi.getDate()===g;
-
-      const nomeG = data.toLocaleDateString('it-IT', {
-        weekday:'short', day:'2-digit', month:'2-digit'
-      });
+      const nomeG   = data.toLocaleDateString('it-IT', { weekday:'short', day:'2-digit', month:'2-digit' });
 
       if (!datiMese[g]) datiMese[g] = { partenza:'', fine:'', pausa:'', straordinario:'', note:'', totale:'' };
       const r = datiMese[g];
@@ -191,21 +276,9 @@
 
       tr.innerHTML = `
         <td class="${weekend?'weekend':''}" style="${isOggi?'font-weight:700;':''}">${nomeG}</td>
-        <td>
-          <select onchange="aggiornaRiga(${g},'partenza',this.value)">
-            ${opzioniOra(r.partenza)}
-          </select>
-        </td>
-        <td>
-          <select onchange="aggiornaRiga(${g},'fine',this.value)">
-            ${opzioniOra(r.fine)}
-          </select>
-        </td>
-        <td>
-          <select onchange="aggiornaRiga(${g},'pausa',this.value)">
-            ${opzioniPausa(r.pausa)}
-          </select>
-        </td>
+        <td><select onchange="aggiornaRiga(${g},'partenza',this.value)">${opzioniOra(r.partenza)}</select></td>
+        <td><select onchange="aggiornaRiga(${g},'fine',this.value)">${opzioniOra(r.fine)}</select></td>
+        <td><select onchange="aggiornaRiga(${g},'pausa',this.value)">${opzioniPausa(r.pausa)}</select></td>
         <td>
           <input type="text" value="${r.straordinario||''}" placeholder="es. 1h"
             style="width:80px;"
@@ -223,7 +296,6 @@
     }
   }
 
-  // ── AGGIORNA RIGA ──
   window.aggiornaRiga = function(g, campo, valore) {
     datiMese[g][campo] = valore;
     calcolaTotale(g);
@@ -244,8 +316,7 @@
     const pausa = parseInt(r.pausa) || 0;
     let lavorati = fineMin - partMin - pausa;
     if (lavorati < 0) lavorati = 0;
-    const ore = Math.floor(lavorati/60);
-    const min = lavorati % 60;
+    const ore = Math.floor(lavorati/60), min = lavorati % 60;
     r.totale = min > 0 ? `${ore}h ${String(min).padStart(2,'0')}m` : `${ore}h`;
     const el = document.getElementById(`tot-${g}`);
     if (el) el.textContent = r.totale;
@@ -257,7 +328,6 @@
     return h*60 + m;
   }
 
-  // ── STATS ──
   function aggiornaStats() {
     let totaleMins = 0, giorni = 0;
     const oggi     = new Date();
@@ -268,7 +338,6 @@
     Object.entries(datiMese).forEach(([g, r]) => {
       const min = totaleToMin(r.totale);
       if (min > 0) { totaleMins += min; giorni++; }
-      // settimana corrente
       const dataG = new Date(viewYear, viewMonth, parseInt(g));
       if (dataG >= startSet && dataG <= endSet) settMins += min;
     });
@@ -281,8 +350,7 @@
 
   function totaleToMin(totale) {
     if (!totale) return 0;
-    const mH = totale.match(/(\d+)h/);
-    const mM = totale.match(/(\d+)m/);
+    const mH = totale.match(/(\d+)h/), mM = totale.match(/(\d+)m/);
     return (mH ? parseInt(mH[1])*60 : 0) + (mM ? parseInt(mM[1]) : 0);
   }
 
@@ -291,40 +359,25 @@
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
   }
 
-  // ── SALVA ──
   async function salvaSilenzioso() {
     if (!currentUser) return;
     const chiave = `${viewYear}_${String(viewMonth+1).padStart(2,'0')}`;
     const ref    = doc(db, 'utenti', currentUser.uid, 'mesi', chiave);
-    await setDoc(ref, {
-      giorni: datiMese,
-      aggiornato: serverTimestamp(),
-      anno: viewYear,
-      mese: viewMonth+1
-    }, { merge: true });
+    await setDoc(ref, { giorni: datiMese, aggiornato: serverTimestamp(), anno: viewYear, mese: viewMonth+1 }, { merge: true });
   }
 
   function validaCantieri() {
-    // Controlla solo i giorni che hanno partenza E fine compilate
     const righeIncomplete = [];
     Object.entries(datiMese).forEach(([g, r]) => {
-      if (r.partenza && r.fine && !r.note) {
-        righeIncomplete.push(g);
-      }
+      if (r.partenza && r.fine && !r.note) righeIncomplete.push(g);
     });
-    // Evidenzia in rosso i campi cantiere vuoti sulle righe lavorate
     const giorniNelMese = new Date(viewYear, viewMonth+1, 0).getDate();
     for (let g = 1; g <= giorniNelMese; g++) {
       const r = datiMese[g];
       const inputs = document.querySelectorAll(`#tbodyOre tr:nth-child(${g}) input[type="text"]:last-of-type`);
       inputs.forEach(inp => {
-        if (r && r.partenza && r.fine && !r.note) {
-          inp.style.borderColor = 'var(--red)';
-          inp.style.outline = '1px solid var(--red)';
-        } else {
-          inp.style.borderColor = '';
-          inp.style.outline = '';
-        }
+        if (r && r.partenza && r.fine && !r.note) { inp.style.borderColor = 'var(--red)'; inp.style.outline = '1px solid var(--red)'; }
+        else { inp.style.borderColor = ''; inp.style.outline = ''; }
       });
     }
     return righeIncomplete;
@@ -332,134 +385,75 @@
 
   window.salvaTutto = async function() {
     const mancanti = validaCantieri();
-    if (mancanti.length > 0) {
-      showToast(`⚠ Cantiere obbligatorio per ${mancanti.length} giorno/i lavorato/i!`, true);
-      return;
-    }
+    if (mancanti.length > 0) { showToast(`⚠ Cantiere obbligatorio per ${mancanti.length} giorno/i lavorato/i!`, true); return; }
     await salvaSilenzioso();
     showToast('✓ Salvato!');
   };
 
-  // ── PDF ──
   window.scaricaPDF = async function() {
     const mancanti = validaCantieri();
-    if (mancanti.length > 0) {
-      showToast(`⚠ Compila il cantiere per tutti i giorni lavorati prima di scaricare il PDF!`, true);
-      return;
-    }
+    if (mancanti.length > 0) { showToast(`⚠ Compila il cantiere per tutti i giorni lavorati prima di scaricare il PDF!`, true); return; }
     await salvaSilenzioso();
     const { jsPDF } = window.jspdf;
     const doc2 = new jsPDF();
-    const W    = 210, mg = 14;
-
-    // Header
-    doc2.setFillColor(15,15,15);
-    doc2.rect(0,0,W,28,'F');
-    doc2.setFillColor(255,106,0);
-    doc2.rect(0,0,W,4,'F');
-    doc2.setTextColor(255,106,0);
-    doc2.setFontSize(18);
-    doc2.setFont('helvetica','bold');
+    const W = 210, mg = 14;
+    doc2.setFillColor(15,15,15); doc2.rect(0,0,W,28,'F');
+    doc2.setFillColor(255,106,0); doc2.rect(0,0,W,4,'F');
+    doc2.setTextColor(255,106,0); doc2.setFontSize(18); doc2.setFont('helvetica','bold');
     doc2.text('GAMA SERVICE', mg, 18);
-    doc2.setTextColor(180,180,180);
-    doc2.setFontSize(9);
-    doc2.setFont('helvetica','normal');
+    doc2.setTextColor(180,180,180); doc2.setFontSize(9); doc2.setFont('helvetica','normal');
     doc2.text(`Registro Ore – ${MESI[viewMonth]} ${viewYear}`, W-mg, 18, {align:'right'});
-
-    // Operaio
-    doc2.setFillColor(30,30,30);
-    doc2.rect(mg, 32, W-mg*2, 12, 'F');
-    doc2.setTextColor(200,200,200);
-    doc2.setFontSize(10);
+    doc2.setFillColor(30,30,30); doc2.rect(mg, 32, W-mg*2, 12, 'F');
+    doc2.setTextColor(200,200,200); doc2.setFontSize(10);
     doc2.text(`Tecnico: ${profilo.nomeCompleto}   |   Email: ${profilo.email}`, mg+4, 40);
-
     let y = 54;
-    // Intestazione tabella
-    doc2.setFillColor(40,40,40);
-    doc2.rect(mg, y-5, W-mg*2, 9, 'F');
-    doc2.setTextColor(120,120,120);
-    doc2.setFontSize(8);
-    doc2.setFont('helvetica','bold');
+    doc2.setFillColor(40,40,40); doc2.rect(mg, y-5, W-mg*2, 9, 'F');
+    doc2.setTextColor(120,120,120); doc2.setFontSize(8); doc2.setFont('helvetica','bold');
     ['GIORNO','INIZIO','FINE','PAUSA','STRAORD.','ORE TOT','CANTIERE'].forEach((h,i) => {
       const xs = [mg+2, mg+30, mg+56, mg+82, mg+104, mg+130, mg+155];
       doc2.text(h, xs[i], y);
     });
     y += 7;
-
     const giorniNelMese = new Date(viewYear, viewMonth+1, 0).getDate();
     let totMins = 0, riga = 0;
-
     for (let g = 1; g <= giorniNelMese; g++) {
       if (y > 278) { doc2.addPage(); y = 20; }
-      const data    = new Date(viewYear, viewMonth, g);
-      const dow     = data.getDay();
-      const weekend = dow===0||dow===6;
-      const nomeG   = data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit'});
-      const r       = datiMese[g] || {};
-
+      const data = new Date(viewYear, viewMonth, g);
+      const dow = data.getDay(); const weekend = dow===0||dow===6;
+      const nomeG = data.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'2-digit'});
+      const r = datiMese[g] || {};
       if (riga%2===0) { doc2.setFillColor(22,22,22); doc2.rect(mg,y-4,W-mg*2,8,'F'); }
-
-      doc2.setFontSize(8.5);
-      doc2.setFont('helvetica','normal');
-      if (weekend) doc2.setTextColor(220,100,60);
-      else doc2.setTextColor(210,210,210);
-
+      doc2.setFontSize(8.5); doc2.setFont('helvetica','normal');
+      if (weekend) doc2.setTextColor(220,100,60); else doc2.setTextColor(210,210,210);
       const xs = [mg+2, mg+30, mg+56, mg+82, mg+104, mg+130, mg+155];
-      doc2.text(nomeG,           xs[0], y);
-      doc2.text(r.partenza||'-', xs[1], y);
-      doc2.text(r.fine||'-',     xs[2], y);
-      doc2.text(r.pausa ? r.pausa+'m' : '-', xs[3], y);
-
-      doc2.setTextColor(200,160,60);
-      doc2.text(r.straordinario||'-', xs[4], y);
-
-      doc2.setTextColor(255,106,0);
-      doc2.setFont('helvetica','bold');
-      doc2.text(r.totale||'-', xs[5], y);
-
-      doc2.setTextColor(150,150,150);
-      doc2.setFont('helvetica','normal');
-      doc2.setFontSize(7.5);
+      doc2.text(nomeG, xs[0], y); doc2.text(r.partenza||'-', xs[1], y);
+      doc2.text(r.fine||'-', xs[2], y); doc2.text(r.pausa ? r.pausa+'m' : '-', xs[3], y);
+      doc2.setTextColor(200,160,60); doc2.text(r.straordinario||'-', xs[4], y);
+      doc2.setTextColor(255,106,0); doc2.setFont('helvetica','bold'); doc2.text(r.totale||'-', xs[5], y);
+      doc2.setTextColor(150,150,150); doc2.setFont('helvetica','normal'); doc2.setFontSize(7.5);
       if (r.note) doc2.text(r.note.substring(0,22), xs[6], y);
-
-      totMins += totaleToMin(r.totale);
-      y += 8; riga++;
+      totMins += totaleToMin(r.totale); y += 8; riga++;
     }
-
-    // Totale
     y += 4;
-    doc2.setFillColor(255,106,0);
-    doc2.rect(mg, y-5, W-mg*2, 10, 'F');
-    doc2.setTextColor(0,0,0);
-    doc2.setFontSize(10);
-    doc2.setFont('helvetica','bold');
-    doc2.text('TOTALE MESE', mg+2, y+0.5);
-    doc2.text(formatMin(totMins), W-mg-2, y+0.5, {align:'right'});
-
-    // Footer
-    doc2.setTextColor(80,80,80);
-    doc2.setFontSize(7);
-    doc2.setFont('helvetica','normal');
+    doc2.setFillColor(255,106,0); doc2.rect(mg, y-5, W-mg*2, 10, 'F');
+    doc2.setTextColor(0,0,0); doc2.setFontSize(10); doc2.setFont('helvetica','bold');
+    doc2.text('TOTALE MESE', mg+2, y+0.5); doc2.text(formatMin(totMins), W-mg-2, y+0.5, {align:'right'});
+    doc2.setTextColor(80,80,80); doc2.setFontSize(7); doc2.setFont('helvetica','normal');
     doc2.text(`Generato il ${new Date().toLocaleDateString('it-IT')} – Gama Service`, W/2, 290, {align:'center'});
-
     doc2.save(`ore_${profilo.cognome}_${MESI[viewMonth]}_${viewYear}.pdf`);
     showToast('✓ PDF scaricato!');
   };
 
-  // ── LOGOUT ──
   window.doLogout = async function() {
     await salvaSilenzioso();
     await signOut(auth);
     window.location.href = 'index.html';
   };
 
-  // ── TOAST ──
   function showToast(msg, err=false) {
     const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'toast' + (err?' error':'');
-    t.classList.add('show');
-    setTimeout(()=>t.classList.remove('show'), 2500);
+    t.textContent = msg; t.className = 'toast' + (err?' error':'');
+    t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2500);
   }
   window.showToast = showToast;
 </script>
