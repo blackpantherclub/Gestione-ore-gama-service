@@ -225,6 +225,12 @@
       background: var(--surface2);
     }
   </style>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png"/>
+  <meta name="theme-color" content="#ff6a00"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Gama Service"/>
 </head>
 <body>
 
@@ -731,5 +737,7 @@ function showToast(msg, err=false) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 </script>
+
+<script src="js/pwa-install.js"></script>
 </body>
 </html>
