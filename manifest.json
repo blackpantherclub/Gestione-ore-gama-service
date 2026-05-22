@@ -2,26 +2,28 @@
   "name": "Gama Service",
   "short_name": "Gama Service",
   "description": "Registro ore, carburante e revisioni furgoni",
-  "start_url": "./index.html",
+  "start_url": "/Gestione-ore-gama-service/index.html",
+  "scope": "/Gestione-ore-gama-service/",
   "display": "standalone",
   "background_color": "#0d0d0d",
   "theme_color": "#ff6a00",
   "orientation": "portrait-primary",
+  "lang": "it",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/Gestione-ore-gama-service/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "/Gestione-ore-gama-service/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "apple-touch-icon.png",
+      "src": "/Gestione-ore-gama-service/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png"
     }

@@ -1,32 +1,36 @@
-const CACHE_NAME = 'gama-service-v1';
+const CACHE_NAME = 'gama-v3';
+const SCOPE = '/Gestione-ore-gama-service/';
+
 const ASSETS = [
-  './',
-  './index.html',
-  './operaio.html',
-  './admin.html',
-  './carburante.html',
-  './furgoni.html',
-  './registrati.html',
-  './recupera-password.html',
-  './css/style.css',
-  './js/firebase-config.js',
-  './img/logo.png',
-  './img/icon-192.png',
-  './img/icon-512.png',
-  './img/apple-touch-icon.png',
-  './img/favicon.ico',
-  './img/favicon.png'
+  SCOPE,
+  SCOPE + 'index.html',
+  SCOPE + 'operaio.html',
+  SCOPE + 'admin.html',
+  SCOPE + 'carburante.html',
+  SCOPE + 'furgoni.html',
+  SCOPE + 'registrati.html',
+  SCOPE + 'recupera-password.html',
+  SCOPE + 'css/style.css',
+  SCOPE + 'js/firebase-config.js',
+  SCOPE + 'js/pwa-install.js',
+  SCOPE + 'img/logo.png',
+  SCOPE + 'img/favicon.ico',
+  SCOPE + 'img/favicon.png',
+  SCOPE + 'icon-192.png',
+  SCOPE + 'icon-512.png',
+  SCOPE + 'apple-touch-icon.png',
+  SCOPE + 'manifest.json',
 ];
 
-// Installazione: metti in cache le risorse principali
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(ASSETS))
+      .catch(err => console.warn('[SW] Cache parziale:', err))
   );
   self.skipWaiting();
 });
 
-// Attivazione: pulisci cache vecchie
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -36,25 +40,15 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch: network first, fallback cache
 self.addEventListener('fetch', e => {
-  // Ignora richieste Firebase (sempre online)
-  if (e.request.url.includes('firebase') ||
-      e.request.url.includes('googleapis') ||
-      e.request.url.includes('anthropic') ||
-      e.request.url.includes('emailjs') ||
-      e.request.url.includes('cdnjs') ||
-      e.request.url.includes('jsdelivr')) {
-    return;
-  }
+  if (!e.request.url.startsWith(self.location.origin + SCOPE)) return;
 
   e.respondWith(
     fetch(e.request)
-      .then(response => {
-        // Aggiorna cache con risposta fresca
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        return response;
+      .then(res => {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        return res;
       })
       .catch(() => caches.match(e.request))
   );
