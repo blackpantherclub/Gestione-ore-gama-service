@@ -287,10 +287,23 @@
         <td><select onchange="aggiornaRiga(${g},'fine',this.value)">${opzioniOra(r.fine)}</select></td>
         <td><select onchange="aggiornaRiga(${g},'pausa',this.value)">${opzioniPausa(r.pausa)}</select></td>
         <td>
-          <input type="text" value="${r.straordinario||''}" placeholder="es. 1h"
-            style="width:80px;"
-            onchange="aggiornaRiga(${g},'straordinario',this.value)"
-            title="Ore straordinario"/>
+          ${(()=>{
+            const now = new Date();
+            const isOggiStrao = oggi.getFullYear()===viewYear && oggi.getMonth()===viewMonth && oggi.getDate()===g;
+            const dataGiorno = new Date(viewYear, viewMonth, g);
+            const passato = dataGiorno < new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate());
+            const oraSblocco = now.getHours() > 17 || (now.getHours() === 17 && now.getMinutes() >= 30);
+            // Bloccato se: giorno passato (qualunque sia il valore) OPPURE oggi prima delle 17:30
+            const bloccato = passato || (isOggiStrao && !oraSblocco);
+            const valoreEsistente = r.straordinario || '';
+            const placeholder = bloccato ? (isOggiStrao ? '🔒 dopo 17:30' : '🔒') : 'es. 1h';
+            return `<input type="text" value="${valoreEsistente}" placeholder="${placeholder}"
+              style="width:80px;${bloccato ? 'opacity:0.45;cursor:not-allowed;' : ''}"
+              ${bloccato ? 'disabled' : ''}
+              oninput="aggiornaRiga(${g},'straordinario',this.value)"
+              onchange="aggiornaRiga(${g},'straordinario',this.value)"
+              title="${bloccato ? (isOggiStrao ? 'Disponibile dopo le 17:30' : 'Non modificabile: giorno passato') : 'Ore straordinario'}"/>`;
+          })()}
         </td>
         <td class="totale" id="tot-${g}">${r.totale}</td>
         <td>
