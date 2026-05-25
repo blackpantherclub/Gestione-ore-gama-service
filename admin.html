@@ -11,6 +11,105 @@
 
   <style>
     /* ── BUSTE PAGA MODAL ── */
+    /* ── DOCUMENTI OPERAI ── */
+    .doc-operaio-card {
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .doc-operaio-card:hover { border-color: var(--orange); }
+
+    .doc-operaio-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      cursor: pointer;
+      gap: 10px;
+    }
+    .doc-operaio-nome {
+      font-weight: 700;
+      font-size: 15px;
+      color: #1a1a1a;
+      flex: 1;
+    }
+    .doc-operaio-count {
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(0,0,0,0.06);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .doc-operaio-arrow {
+      color: var(--muted);
+      font-size: 18px;
+      transition: transform 0.2s;
+    }
+    .doc-operaio-card.aperto .doc-operaio-arrow { transform: rotate(90deg); }
+
+    .doc-operaio-body {
+      display: none;
+      padding: 0 18px 16px;
+      border-top: 1px solid rgba(0,0,0,0.07);
+    }
+    .doc-operaio-card.aperto .doc-operaio-body { display: block; }
+
+    .doc-categoria-titolo {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 14px 0 8px;
+    }
+
+    .doc-file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.8);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 8px;
+      margin-bottom: 6px;
+      transition: border-color 0.15s;
+    }
+    .doc-file-item:hover { border-color: var(--orange); }
+    .doc-file-nome {
+      flex: 1;
+      font-size: 12px;
+      color: #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .doc-file-btn {
+      background: none;
+      border: 1px solid rgba(255,106,0,0.4);
+      color: var(--orange);
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .doc-file-btn:hover { background: var(--orange-light); }
+
+    .doc-tesserino-img {
+      width: 100%;
+      max-width: 320px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.1);
+      display: block;
+      margin: 8px 0;
+    }
+
     .modal-overlay {
       display: none;
       position: fixed;
@@ -141,12 +240,13 @@
 <body>
 
 <!-- TOPBAR -->
-<div class="topbar">
+<div class="topbar" style="height:auto; flex-wrap:wrap; padding:10px 16px; gap:8px;">
   <div class="topbar-logo"><img src="img/logo.png" alt="Gama Service" style="height:38px;width:auto;display:block;"/></div>
-  <div class="topbar-right">
+  <div class="topbar-right" style="flex-wrap:wrap; gap:8px; justify-content:flex-end;">
     <span style="color:var(--orange);font-size:12px;font-weight:600;">AMMINISTRATORE</span>
-    <a href="furgoni.html" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted2);padding:6px 14px;border-radius:8px;font-size:12px;text-decoration:none;font-family:'Inter',sans-serif;">🚐 Revisioni Furgoni</a>
-    <a href="carburante.html" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted2);padding:6px 14px;border-radius:8px;font-size:12px;text-decoration:none;font-family:'Inter',sans-serif;">⛽ Carburante</a>
+    <a href="furgoni.html" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:11px;text-decoration:none;font-family:'Inter',sans-serif;white-space:nowrap;">🚐 Revisioni Furgoni</a>
+    <a href="carburante.html" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted2);padding:6px 12px;border-radius:8px;font-size:11px;text-decoration:none;font-family:'Inter',sans-serif;white-space:nowrap;">⛽ Carburante</a>
+    <a href="#sezioneDocumenti" style="background:var(--orange);border:1px solid var(--orange);color:#fff;padding:6px 12px;border-radius:8px;font-size:11px;text-decoration:none;font-family:'Inter',sans-serif;white-space:nowrap;font-weight:600;">📁 Documenti</a>
     <button class="btn-logout" onclick="doLogout()">Esci</button>
   </div>
 </div>
@@ -262,6 +362,19 @@
     </div>
   </div>
 
+  <!-- SEZIONE DOCUMENTI OPERAI -->
+  <div id="sezioneDocumenti" class="card" style="margin-top:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div class="card-title" style="margin-bottom:0;">— 📁 Documenti Operai</div>
+      <span id="docOperaiStats" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+    <div id="docOperaiContainer">
+      <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">
+        <span class="spinner"></span> Caricamento documenti...
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -332,6 +445,7 @@
     aggiornaLabel();
     caricaOperai();
     caricaFurgoniPreview();
+    caricaDocumentiOperai();
   });
 
   function aggiornaLabel() {
@@ -393,19 +507,21 @@
     }
 
     el.innerHTML = lista.map(op => `
-      <div class="operaio-card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-        <div style="flex:1;min-width:0;cursor:pointer;" onclick="apriOperaio(${JSON.stringify(op).replace(/"/g,'&quot;')})">
-          <div class="oc-name">${op.nomeCompleto || op.nome+' '+op.cognome}</div>
-          <div class="oc-email">${op.email}</div>
+      <div class="operaio-card" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="apriOperaio(${JSON.stringify(op).replace(/"/g,'&quot;')})">
+          <div style="flex:1;min-width:0;">
+            <div class="oc-name">${op.nomeCompleto || op.nome+' '+op.cognome}</div>
+            <div class="oc-email">${op.email}</div>
+          </div>
+          <span style="color:var(--muted);font-size:18px;">›</span>
         </div>
-        <div class="oc-right" style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <button class="btn-busta-paga" onclick="event.stopPropagation(); apriBuste('${op.uid}', '${(op.nomeCompleto||op.nome+' '+op.cognome).replace(/'/g,"\\'")}')">
             📎 Buste paga
           </button>
           <span class="badge ${op.oreMese>0?'badge-green':'badge-orange'}">
             ${op.oreMese>0 ? formatMin(op.oreMese)+' questo mese' : 'nessuna ora'}
           </span>
-          <span style="color:var(--muted);font-size:18px;cursor:pointer;" onclick="apriOperaio(${JSON.stringify(op).replace(/"/g,'&quot;')})">›</span>
         </div>
       </div>
     `).join('');
@@ -780,7 +896,176 @@
   }
 
   // ── LOGOUT ──
-  window.doLogout = async function() {
+  // ── DOCUMENTI OPERAI ──────────────────────────────────────
+
+const ETICHETTE_CAT = {
+  'Documenti_Identita':          '🪪 Documenti Identità',
+  'Idoneita_Sanitaria':          '🩺 Idoneità Sanitaria',
+  'Formazione_Generale':         '📚 Formazione Generale',
+  'Formazione_PES-PAV':          '⚡ Formazione PES-PAV',
+  'Formazione_PLE':              '🏗 Formazione PLE',
+  'Formazione_Antincendio':      '🔥 Formazione Antincendio',
+  'Formazione_Preposto':         '👷 Formazione Preposto',
+  'Formazione_Gru':              '🏗 Formazione Gru',
+  'Formazione_Escavatore':       '🚜 Formazione Escavatore',
+  'Formazione_Primo_Soccorso':   '🏥 Primo Soccorso',
+  'Formazione_Spazi_Confinanti': '🔒 Spazi Confinanti',
+  'Formazione_DPI_Lavori_Quota': '🪜 DPI Lavori in Quota',
+  'UNILAV_Assunzione':           '📋 UNILAV Assunzione',
+  'Verbale_DPI':                 '🧤 Verbale DPI',
+  'F_GAS':                       '❄️ F-GAS',
+  'F_GAS_Strumenti':             '🔧 F-GAS Strumenti',
+  'Tesserino':                   '🪪 Tesserino',
+  'Idoneita_Generica':           '🩺 Idoneità Generica',
+};
+
+const ORDINE_CAT = [
+  'Documenti_Identita','Tesserino','Idoneita_Sanitaria',
+  'UNILAV_Assunzione','Verbale_DPI',
+  'Formazione_Generale','Formazione_PES-PAV','Formazione_PLE',
+  'Formazione_Antincendio','Formazione_Preposto','Formazione_Gru',
+  'Formazione_Escavatore','Formazione_Primo_Soccorso',
+  'Formazione_Spazi_Confinanti','Formazione_DPI_Lavori_Quota',
+  'F_GAS','F_GAS_Strumenti','Idoneita_Generica'
+];
+
+async function caricaDocumentiOperai() {
+  const container = document.getElementById('docOperaiContainer');
+  const stats     = document.getElementById('docOperaiStats');
+
+  try {
+    // Carica tutti i documenti per operaio
+    const operaiSnap = await getDocs(collection(db, 'documenti_operai'));
+
+    if (operaiSnap.empty) {
+      container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">
+        📂 Nessun documento caricato ancora.<br><br>
+        <span style="font-size:12px;color:#aaa;">Esegui lo script <b>carica_firebase_FINALE.py</b> per caricare i documenti degli operai.</span>
+      </div>`;
+      return;
+    }
+
+    let totaleDoc = 0;
+    let html = '';
+
+    // Per ogni operaio
+    const operaiList = operaiSnap.docs.map(d => d.id).sort();
+
+    for (const operaioId of operaiList) {
+      // Carica tutte le categorie
+      const catDocs = {};
+      let countOperaio = 0;
+
+      for (const cat of ORDINE_CAT) {
+        const catSnap = await getDocs(
+          collection(db, 'documenti_operai', operaioId, cat)
+        );
+        if (!catSnap.empty) {
+          catDocs[cat] = catSnap.docs.map(d => d.data());
+          countOperaio += catSnap.docs.length;
+        }
+      }
+
+      if (countOperaio === 0) continue;
+      totaleDoc += countOperaio;
+
+      const nomeLeggibile = operaioId.replace(/_/g, ' ');
+
+      // Costruisci HTML categorie
+      let catHtml = '';
+      for (const cat of ORDINE_CAT) {
+        if (!catDocs[cat]) continue;
+        const etichetta = ETICHETTE_CAT[cat] || cat;
+        catHtml += `<div class="doc-categoria-titolo">${etichetta}</div>`;
+
+        for (const doc of catDocs[cat]) {
+          const isTesserino = cat === 'Tesserino';
+          const isImmagine  = doc.nome && /\.(png|jpg|jpeg)$/i.test(doc.nome);
+
+          if (isTesserino && isImmagine) {
+            catHtml += `
+              <div class="doc-file-item" style="flex-direction:column;align-items:flex-start;">
+                <img src="${doc.url}" class="doc-tesserino-img" alt="Tesserino ${nomeLeggibile}"/>
+              </div>`;
+          } else {
+            catHtml += `
+              <div class="doc-file-item">
+                <span style="font-size:16px;">${isImmagine ? '🖼' : '📄'}</span>
+                <span class="doc-file-nome" title="${doc.nome}">${doc.nome}</span>
+                <button class="doc-file-btn" onclick="apriDocumento('${doc.url}', '${doc.nome.replace(/'/g,"\'")}')">
+                  👁 Visualizza
+                </button>
+              </div>`;
+          }
+        }
+      }
+
+      html += `
+        <div class="doc-operaio-card" id="doc-card-${operaioId}">
+          <div class="doc-operaio-header" onclick="toggleDocOperaio('${operaioId}')">
+            <div class="doc-operaio-nome">👤 ${nomeLeggibile}</div>
+            <span class="doc-operaio-count">${countOperaio} documenti</span>
+            <span class="doc-operaio-arrow">›</span>
+          </div>
+          <div class="doc-operaio-body">
+            ${catHtml}
+          </div>
+        </div>`;
+    }
+
+    container.innerHTML = html || '<div style="padding:20px;color:var(--muted);text-align:center;">Nessun documento trovato.</div>';
+    stats.textContent = `${operaiList.length} operai · ${totaleDoc} documenti totali`;
+
+  } catch(e) {
+    container.innerHTML = `<div style="padding:16px;color:var(--red);font-size:13px;">Errore caricamento documenti: ${e.message}</div>`;
+    console.error(e);
+  }
+}
+
+window.toggleDocOperaio = function(operaioId) {
+  const card = document.getElementById(`doc-card-${operaioId}`);
+  card.classList.toggle('aperto');
+};
+
+window.apriDocumento = function(url, nome) {
+  // Apre il documento in un overlay modale
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.85);
+    z-index:9999;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:16px;`;
+
+  const isImmagine = /\.(png|jpg|jpeg)$/i.test(nome);
+
+  modal.innerHTML = `
+    <div style="background:#1e1e1e;border-radius:12px;width:100%;max-width:900px;
+      height:90vh;display:flex;flex-direction:column;overflow:hidden;
+      border:1px solid rgba(255,106,0,0.3);">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);background:#111;">
+        <span style="color:#fff;font-weight:600;font-size:13px;">📄 ${nome}</span>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <a href="${url}" download="${nome}" style="color:var(--orange);font-size:12px;
+            text-decoration:none;border:1px solid rgba(255,106,0,0.4);
+            padding:5px 12px;border-radius:6px;">⬇ Scarica</a>
+          <button onclick="this.closest('div[style*=fixed]').remove()"
+            style="background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;">✕</button>
+        </div>
+      </div>
+      ${isImmagine
+        ? `<img src="${url}" style="flex:1;object-fit:contain;max-height:100%;padding:10px;" />`
+        : `<iframe src="${/iPhone|iPad|Android/i.test(navigator.userAgent)
+            ? 'https://docs.google.com/viewer?url='+encodeURIComponent(url)+'&embedded=true'
+            : url}" style="flex:1;border:none;width:100%;background:#fff;"></iframe>`
+      }
+    </div>`;
+
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+};
+
+// ── LOGOUT ────────────────────────────────────────────
+window.doLogout = async function() {
     await signOut(auth);
     window.location.href = 'index.html';
   };

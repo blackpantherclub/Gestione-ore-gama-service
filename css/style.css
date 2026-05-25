@@ -454,4 +454,21 @@ body {
   .stats-row { grid-template-columns: 1fr 1fr; }
   .topbar-logo { font-size: 22px; }
   .page { padding: 20px 14px 60px; }
+
+  .topbar {
+    height: auto !important;
+    flex-wrap: wrap !important;
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+  .topbar-right {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-end !important;
+    width: 100%;
+  }
+  .topbar-right a, .topbar-right button {
+    font-size: 11px !important;
+    padding: 5px 10px !important;
+  }
 }
