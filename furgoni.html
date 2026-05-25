@@ -75,9 +75,9 @@
     .furgone-card.ok      { border-color: #00c85355; }
 
     .fc-targa { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 3px; color: var(--orange); margin-bottom: 4px; }
-    .fc-modello { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
-    .fc-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    .fc-row span:last-child { color: var(--text); font-weight: 500; }
+    .fc-modello { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #1a1a1a; }
+    .fc-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666; margin-bottom: 6px; }
+    .fc-row span:last-child { color: #1a1a1a; font-weight: 600; }
     .fc-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-top: 10px; }
     .badge-red    { background: #ff3d3d22; color: #ff3d3d; }
     .badge-yellow { background: #ffaa0022; color: #ffaa00; }
@@ -168,7 +168,7 @@
 <div class="page">
 
   <!-- BANNER EMAIL -->
-  <div class="config-banner" id="configBanner">
+  <div class="config-banner" id="configBanner" style="display:none;">
     <span class="icon">⚙️</span>
     <div style="flex:1;">
       <strong style="color:var(--text);">Configura le email automatiche</strong><br>
@@ -725,15 +725,24 @@ async function caricaConfigEmail() {
   try {
     const snap = await getDoc(doc(db, 'config', 'emailjs'));
     const cfg  = snap.exists() ? snap.data() : {};
+    const banner = document.getElementById('configBanner');
     if (cfg.email && cfg.publicKey && cfg.serviceId && cfg.templateId) {
-      document.getElementById('configBanner').style.display = 'none';
+      // Config completa — nascondi banner e inizializza EmailJS
+      banner.style.display = 'none';
       emailjs.init(cfg.publicKey);
+    } else {
+      // Config mancante — mostra banner
+      banner.style.display = '';
     }
     if (cfg.email)      document.getElementById('cfgEmail').value      = cfg.email;
     if (cfg.publicKey)  document.getElementById('cfgPublicKey').value  = cfg.publicKey;
     if (cfg.serviceId)  document.getElementById('cfgServiceId').value  = cfg.serviceId;
     if (cfg.templateId) document.getElementById('cfgTemplateId').value = cfg.templateId;
-  } catch(e) { console.warn('Errore caricamento config email:', e); }
+  } catch(e) {
+    console.warn('Errore caricamento config email:', e);
+    // In caso di errore mostra il banner
+    document.getElementById('configBanner').style.display = '';
+  }
 }
 
 window.apriConfigEmail  = () => document.getElementById('modalEmail').classList.add('show');

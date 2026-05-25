@@ -934,71 +934,82 @@ async function caricaDocumentiOperai() {
   const stats     = document.getElementById('docOperaiStats');
 
   try {
-    // Carica tutti i documenti per operaio
-    const operaiSnap = await getDocs(collection(db, 'documenti_operai'));
+    const storage = getStorage();
+    const rootRef = sRef(storage, 'documenti-operai');
 
-    if (operaiSnap.empty) {
+    // Lista tutte le cartelle operai
+    const rootList = await listAll(rootRef);
+
+    if (rootList.prefixes.length === 0) {
       container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">
-        📂 Nessun documento caricato ancora.<br><br>
-        <span style="font-size:12px;color:#aaa;">Esegui lo script <b>carica_firebase_FINALE.py</b> per caricare i documenti degli operai.</span>
+        📂 Nessun documento trovato su Firebase Storage.
       </div>`;
       return;
     }
 
-    let totaleDoc = 0;
     let html = '';
+    let totaleDoc = 0;
+    const operaiList = rootList.prefixes.sort((a,b) => a.name.localeCompare(b.name));
 
-    // Per ogni operaio
-    const operaiList = operaiSnap.docs.map(d => d.id).sort();
-
-    for (const operaioId of operaiList) {
-      // Carica tutte le categorie
-      const catDocs = {};
-      let countOperaio = 0;
-
-      for (const cat of ORDINE_CAT) {
-        const catSnap = await getDocs(
-          collection(db, 'documenti_operai', operaioId, cat)
-        );
-        if (!catSnap.empty) {
-          catDocs[cat] = catSnap.docs.map(d => d.data());
-          countOperaio += catSnap.docs.length;
-        }
-      }
-
-      if (countOperaio === 0) continue;
-      totaleDoc += countOperaio;
-
+    for (const operaioRef of operaiList) {
+      const operaioId = operaioRef.name;
       const nomeLeggibile = operaioId.replace(/_/g, ' ');
 
-      // Costruisci HTML categorie
-      let catHtml = '';
-      for (const cat of ORDINE_CAT) {
-        if (!catDocs[cat]) continue;
-        const etichetta = ETICHETTE_CAT[cat] || cat;
-        catHtml += `<div class="doc-categoria-titolo">${etichetta}</div>`;
+      // Lista categorie dentro l'operaio
+      const operaioList = await listAll(operaioRef);
+      if (operaioList.prefixes.length === 0) continue;
 
-        for (const doc of catDocs[cat]) {
+      let catHtml = '';
+      let countOperaio = 0;
+
+      // Ordina categorie
+      const catOrdinate = operaioList.prefixes.sort((a,b) => {
+        const ia = ORDINE_CAT.indexOf(a.name);
+        const ib = ORDINE_CAT.indexOf(b.name);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      });
+
+      for (const catRef of catOrdinate) {
+        const cat = catRef.name;
+        const etichetta = ETICHETTE_CAT[cat] || cat;
+
+        // Lista file dentro la categoria
+        const catList = await listAll(catRef);
+        if (catList.items.length === 0) continue;
+
+        catHtml += `<div class="doc-categoria-titolo">${etichetta}</div>`;
+        countOperaio += catList.items.length;
+
+        for (const fileRef of catList.items) {
+          const nome = fileRef.name;
+          const isImmagine = /\.(png|jpg|jpeg)$/i.test(nome);
           const isTesserino = cat === 'Tesserino';
-          const isImmagine  = doc.nome && /\.(png|jpg|jpeg)$/i.test(doc.nome);
+
+          // Ottieni URL download
+          const url = await getDownloadURL(fileRef);
+          const nomeEsc = nome.replace(/'/g, "\'").replace(/"/g, '&quot;');
+          const urlEsc  = url.replace(/'/g, "\'");
 
           if (isTesserino && isImmagine) {
             catHtml += `
               <div class="doc-file-item" style="flex-direction:column;align-items:flex-start;">
-                <img src="${doc.url}" class="doc-tesserino-img" alt="Tesserino ${nomeLeggibile}"/>
+                <img src="${url}" class="doc-tesserino-img" alt="Tesserino ${nomeLeggibile}" onerror="this.style.display='none'"/>
               </div>`;
           } else {
             catHtml += `
               <div class="doc-file-item">
                 <span style="font-size:16px;">${isImmagine ? '🖼' : '📄'}</span>
-                <span class="doc-file-nome" title="${doc.nome}">${doc.nome}</span>
-                <button class="doc-file-btn" onclick="apriDocumento('${doc.url}', '${doc.nome.replace(/'/g,"\'")}')">
+                <span class="doc-file-nome" title="${nome}">${nome}</span>
+                <button class="doc-file-btn" onclick="apriDocumento('${urlEsc}','${nomeEsc}')">
                   👁 Visualizza
                 </button>
               </div>`;
           }
         }
       }
+
+      if (countOperaio === 0) continue;
+      totaleDoc += countOperaio;
 
       html += `
         <div class="doc-operaio-card" id="doc-card-${operaioId}">
@@ -1017,8 +1028,8 @@ async function caricaDocumentiOperai() {
     stats.textContent = `${operaiList.length} operai · ${totaleDoc} documenti totali`;
 
   } catch(e) {
-    container.innerHTML = `<div style="padding:16px;color:var(--red);font-size:13px;">Errore caricamento documenti: ${e.message}</div>`;
-    console.error(e);
+    container.innerHTML = `<div style="padding:16px;color:var(--red);font-size:13px;">Errore caricamento: ${e.message}</div>`;
+    console.error('Errore documenti operai:', e);
   }
 }
 
