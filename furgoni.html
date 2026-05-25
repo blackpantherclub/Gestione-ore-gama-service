@@ -356,8 +356,29 @@ onAuthStateChanged(auth, async (user) => {
   await controllaScadenze();
 });
 
+// ── INSERIMENTO AUTOMATICO FURGONE GW730MK ────────────
+async function seedFurgoneDefault() {
+  const id  = 'GW730MK';
+  const ref = doc(db, COLL_FURGONI, id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      targa:    'GW730MK',
+      modello:  'Renault Express',
+      scadenza: '2028-09-17',
+      anno:     '2024',
+      note:     'Autocarro per trasporto cose - uso proprio',
+      librettoUrl:  null,
+      librettoNome: null,
+      librettoPath: null,
+      aggiornato: serverTimestamp()
+    });
+  }
+}
+
 // ── CARICA FURGONI ────────────────────────────────────
 async function caricaFurgoni() {
+  await seedFurgoneDefault();
   const snap = await getDocs(collection(db, COLL_FURGONI));
   furgoniData = [];
   snap.forEach(d => furgoniData.push({ id: d.id, ...d.data() }));
