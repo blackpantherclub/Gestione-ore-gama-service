@@ -721,22 +721,25 @@ zone.addEventListener('drop', e => {
 });
 
 // ── CONFIGURA EMAIL ───────────────────────────────────
-function caricaConfigEmail() {
-  const cfg = JSON.parse(localStorage.getItem('gamaEmailConfig') || '{}');
-  if (cfg.email && cfg.publicKey && cfg.serviceId && cfg.templateId) {
-    document.getElementById('configBanner').style.display = 'none';
-    emailjs.init(cfg.publicKey);
-  }
-  if (cfg.email)      document.getElementById('cfgEmail').value      = cfg.email;
-  if (cfg.publicKey)  document.getElementById('cfgPublicKey').value  = cfg.publicKey;
-  if (cfg.serviceId)  document.getElementById('cfgServiceId').value  = cfg.serviceId;
-  if (cfg.templateId) document.getElementById('cfgTemplateId').value = cfg.templateId;
+async function caricaConfigEmail() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'emailjs'));
+    const cfg  = snap.exists() ? snap.data() : {};
+    if (cfg.email && cfg.publicKey && cfg.serviceId && cfg.templateId) {
+      document.getElementById('configBanner').style.display = 'none';
+      emailjs.init(cfg.publicKey);
+    }
+    if (cfg.email)      document.getElementById('cfgEmail').value      = cfg.email;
+    if (cfg.publicKey)  document.getElementById('cfgPublicKey').value  = cfg.publicKey;
+    if (cfg.serviceId)  document.getElementById('cfgServiceId').value  = cfg.serviceId;
+    if (cfg.templateId) document.getElementById('cfgTemplateId').value = cfg.templateId;
+  } catch(e) { console.warn('Errore caricamento config email:', e); }
 }
 
 window.apriConfigEmail  = () => document.getElementById('modalEmail').classList.add('show');
 window.chiudiModalEmail = () => document.getElementById('modalEmail').classList.remove('show');
 
-window.salvaConfigEmail = function() {
+window.salvaConfigEmail = async function() {
   const email      = document.getElementById('cfgEmail').value.trim();
   const publicKey  = document.getElementById('cfgPublicKey').value.trim();
   const serviceId  = document.getElementById('cfgServiceId').value.trim();
@@ -748,16 +751,23 @@ window.salvaConfigEmail = function() {
     errEl.classList.add('show'); return;
   }
   errEl.classList.remove('show');
-  localStorage.setItem('gamaEmailConfig', JSON.stringify({ email, publicKey, serviceId, templateId }));
-  emailjs.init(publicKey);
-  document.getElementById('configBanner').style.display = 'none';
-  showToast('✓ Configurazione salvata!');
-  chiudiModalEmail();
+
+  try {
+    await setDoc(doc(db, 'config', 'emailjs'), { email, publicKey, serviceId, templateId });
+    emailjs.init(publicKey);
+    document.getElementById('configBanner').style.display = 'none';
+    showToast('✓ Configurazione salvata!');
+    chiudiModalEmail();
+  } catch(e) {
+    errEl.textContent = 'Errore salvataggio: ' + e.message;
+    errEl.classList.add('show');
+  }
 };
 
 // ── CONTROLLO SCADENZE ────────────────────────────────
 async function controllaScadenze() {
-  const cfg = JSON.parse(localStorage.getItem('gamaEmailConfig') || '{}');
+  const snap = await getDoc(doc(db, 'config', 'emailjs'));
+  const cfg  = snap.exists() ? snap.data() : {};
   if (!cfg.email || !cfg.publicKey || !cfg.serviceId || !cfg.templateId) return;
 
   const oggi    = new Date(); oggi.setHours(0,0,0,0);

@@ -223,7 +223,7 @@
             <div class="busta-nome">📄 ${b.nome}</div>
             <div class="busta-meta">Caricata il ${data} · ${formatBytes(b.dimensione || 0)}</div>
           </div>
-          <a class="btn-scarica-busta" href="${b.url}" target="_blank" download="${b.nome}">⬇ Scarica</a>
+          <button class="btn-scarica-busta" onclick="visualizzaBusta('${b.url}', '${b.nome}')">👁 Visualizza</button>
         `;
         el.appendChild(div);
       });
@@ -479,5 +479,67 @@
 </script>
 
 <script src="js/pwa-install.js"></script>
+
+<!-- MODAL VISUALIZZATORE BUSTA PAGA -->
+<div id="modalBusta" style="
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85);
+  z-index:999; flex-direction:column; align-items:center; justify-content:center;
+  padding:16px;">
+  <div style="
+    background:#1e1e1e; border-radius:12px; width:100%; max-width:900px;
+    height:90vh; display:flex; flex-direction:column; overflow:hidden;
+    border:1px solid rgba(255,106,0,0.3);">
+    <!-- Header modal -->
+    <div style="
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 20px; border-bottom:1px solid rgba(255,255,255,0.1);
+      background:#111;">
+      <span id="modalBustaNome" style="color:#fff; font-weight:600; font-size:14px;">📄 Busta paga</span>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <a id="modalBustaDownload" href="#" download style="
+          color:var(--orange); font-size:12px; text-decoration:none;
+          border:1px solid rgba(255,106,0,0.4); padding:5px 12px; border-radius:6px;">
+          ⬇ Scarica
+        </a>
+        <button onclick="chiudiModalBusta()" style="
+          background:none; border:none; color:#aaa; font-size:22px;
+          cursor:pointer; line-height:1; padding:0 4px;">✕</button>
+      </div>
+    </div>
+    <!-- Iframe visualizzatore -->
+    <iframe id="modalBustaFrame" src="" style="
+      flex:1; border:none; width:100%; background:#fff;"></iframe>
+  </div>
+</div>
+
+<script>
+window.visualizzaBusta = function(url, nome) {
+  document.getElementById('modalBustaNome').textContent = '📄 ' + nome;
+  document.getElementById('modalBustaDownload').href = url;
+  document.getElementById('modalBustaDownload').download = nome;
+
+  const modal = document.getElementById('modalBusta');
+  modal.style.display = 'flex';
+
+  // Su mobile usa Google Docs viewer per compatibilità
+  const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  const src = isMobile
+    ? 'https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true'
+    : url;
+
+  document.getElementById('modalBustaFrame').src = src;
+};
+
+window.chiudiModalBusta = function() {
+  document.getElementById('modalBusta').style.display = 'none';
+  document.getElementById('modalBustaFrame').src = '';
+};
+
+// Chiudi con ESC
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') chiudiModalBusta();
+});
+</script>
+
 </body>
 </html>
