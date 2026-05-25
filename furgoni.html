@@ -43,13 +43,13 @@
     .ai-result { flex: 1; min-width: 240px; }
     .ai-status {
       display: flex; align-items: center; gap: 10px;
-      font-size: 13px; color: var(--muted2); margin-bottom: 14px;
+      font-size: 13px; color: #444; margin-bottom: 14px;
     }
     .ai-status .spinner { width: 16px; height: 16px; border-width: 2px; }
 
     /* Upload progress libretto */
     .libretto-progress {
-      font-size: 12px; color: var(--muted2); margin-top: 8px;
+      font-size: 12px; color: #444; margin-top: 8px;
       display: none; align-items: center; gap: 8px;
     }
     .libretto-progress.show { display: flex; }
@@ -102,7 +102,7 @@
     .fc-actions { display: flex; gap: 8px; margin-top: 14px; }
     .btn-icon {
       background: var(--surface2); border: 1px solid var(--border);
-      color: var(--muted2); padding: 6px 12px; border-radius: 8px;
+      color: #444; padding: 6px 12px; border-radius: 8px;
       cursor: pointer; font-size: 12px; font-family: 'Inter', sans-serif;
       transition: all 0.15s; flex: 1; text-align: center;
     }
@@ -140,7 +140,7 @@
     }
     .notif-log .ok   { color: var(--green); }
     .notif-log .err  { color: var(--red); }
-    .notif-log .info { color: var(--muted2); }
+    .notif-log .info { color: #444; }
 
     .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
     .empty-state .big { font-size: 48px; margin-bottom: 12px; }
@@ -160,7 +160,7 @@
   <div class="topbar-logo"><img src="img/logo.png" alt="Gama Service" style="height:38px;width:auto;display:block;"/></div>
   <div class="topbar-right">
     <span style="color:var(--orange);font-size:12px;font-weight:600;">REVISIONI FURGONI</span>
-    <a href="admin.html" style="color:var(--muted2);text-decoration:none;font-size:12px;">← Admin</a>
+    <a href="admin.html" style="color:#444;text-decoration:none;font-size:12px;">← Admin</a>
     <button class="btn-logout" onclick="doLogout()">Esci</button>
   </div>
 </div>
@@ -171,7 +171,7 @@
   <div class="config-banner" id="configBanner" style="display:none;">
     <span class="icon">⚙️</span>
     <div style="flex:1;">
-      <strong style="color:var(--text);">Configura le email automatiche</strong><br>
+      <strong style="color:#1a1a1a;">Configura le email automatiche</strong><br>
       Inserisci le tue credenziali <a href="https://www.emailjs.com" target="_blank">EmailJS</a> (gratuito, 200 email/mese) e l'email destinatario.
     </div>
     <button class="btn btn-secondary btn-sm" onclick="apriConfigEmail()">⚙ Configura</button>
@@ -275,14 +275,14 @@
       <span>⚙️ Configura Email Automatiche</span>
       <button class="modal-close" onclick="chiudiModalEmail()">✕</button>
     </div>
-    <p style="font-size:13px;color:var(--muted2);margin-bottom:18px;">
-      Le notifiche vengono inviate automaticamente <strong style="color:var(--text);">1 mese prima</strong>,
-      <strong style="color:var(--text);">15 giorni prima</strong> e
-      <strong style="color:var(--text);">il giorno stesso</strong> della scadenza revisione,
+    <p style="font-size:13px;color:#444;margin-bottom:18px;">
+      Le notifiche vengono inviate automaticamente <strong style="color:#1a1a1a;">1 mese prima</strong>,
+      <strong style="color:#1a1a1a;">15 giorni prima</strong> e
+      <strong style="color:#1a1a1a;">il giorno stesso</strong> della scadenza revisione,
       ogni volta che apri questa pagina.
     </p>
-    <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:18px;font-size:12px;color:var(--muted2);">
-      <strong style="color:var(--text);">Come ottenere le credenziali EmailJS (gratis):</strong><br>
+    <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:18px;font-size:12px;color:#444;">
+      <strong style="color:#1a1a1a;">Come ottenere le credenziali EmailJS (gratis):</strong><br>
       1. Vai su <a href="https://www.emailjs.com" target="_blank" style="color:var(--orange);">emailjs.com</a> → Registrati<br>
       2. <em>Email Services</em> → Add Service → Gmail → copia il <strong>Service ID</strong><br>
       3. <em>Email Templates</em> → Create → copia il <strong>Template ID</strong><br>
@@ -358,21 +358,41 @@ onAuthStateChanged(auth, async (user) => {
 
 // ── INSERIMENTO AUTOMATICO FURGONE GW730MK ────────────
 async function seedFurgoneDefault() {
-  const id  = 'GW730MK';
-  const ref = doc(db, COLL_FURGONI, id);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, {
+  const furgoniDefault = [
+    {
+      id:       'GW730MK',
       targa:    'GW730MK',
       modello:  'Renault Express',
       scadenza: '2028-09-17',
       anno:     '2024',
       note:     'Autocarro per trasporto cose - uso proprio',
-      librettoUrl:  null,
-      librettoNome: null,
-      librettoPath: null,
-      aggiornato: serverTimestamp()
-    });
+    },
+    {
+      id:       'GY970TY',
+      targa:    'GY970TY',
+      modello:  'Renault Kangoo Van',
+      scadenza: '2029-05-23',
+      anno:     '2025',
+      note:     'Autocarro per trasporto cose - uso proprio',
+    },
+  ];
+
+  for (const f of furgoniDefault) {
+    const ref  = doc(db, COLL_FURGONI, f.id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        targa:        f.targa,
+        modello:      f.modello,
+        scadenza:     f.scadenza,
+        anno:         f.anno,
+        note:         f.note,
+        librettoUrl:  null,
+        librettoNome: null,
+        librettoPath: null,
+        aggiornato:   serverTimestamp()
+      });
+    }
   }
 }
 
