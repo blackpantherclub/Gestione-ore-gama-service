@@ -1014,8 +1014,6 @@ async function caricaDocumentiDaStorage() {
           const nome   = f.name;
           const url    = urls[i];
           const isImg  = /\.(png|jpg|jpeg)$/i.test(nome);
-          const urlE   = url.replace(/'/g,"\'");
-          const nomE   = nome.replace(/'/g,"\'").replace(/"/g,'&quot;');
           count++;
           if (cat==='Tesserino' && isImg) {
             catHtml += `<div class="doc-file-item" style="flex-direction:column;">
@@ -1024,7 +1022,7 @@ async function caricaDocumentiDaStorage() {
             catHtml += `<div class="doc-file-item">
               <span>${isImg?'🖼':'📄'}</span>
               <span class="doc-file-nome" title="${nome}">${nome}</span>
-              <button class="doc-file-btn" onclick="apriDocumento('${urlE}','${nomE}')">👁 Visualizza</button>
+              <button class="doc-file-btn" data-url="${url}" data-nome="${nome}" onclick="apriDocumentoDaBtn(this)">👁 Visualizza</button>
             </div>`;
           }
         });
@@ -1093,8 +1091,6 @@ window.apriDocOperaio = async function(operaioId) {
         const nome  = f.name;
         const url   = urls[i];
         const isImg = /\.(png|jpg|jpeg)$/i.test(nome);
-        const urlE  = url.replace(/'/g,"\'");
-        const nomE  = nome.replace(/'/g,"\'").replace(/"/g,'&quot;');
         tot++;
         if (cat==='Tesserino' && isImg) {
           catHtml += `<div class="doc-file-item" style="flex-direction:column;">
@@ -1103,7 +1099,7 @@ window.apriDocOperaio = async function(operaioId) {
           catHtml += `<div class="doc-file-item">
             <span>${isImg?'🖼':'📄'}</span>
             <span class="doc-file-nome" title="${nome}">${nome}</span>
-            <button class="doc-file-btn" onclick="apriDocumento('${urlE}','${nomE}')">👁 Visualizza</button>
+            <button class="doc-file-btn" data-url="${url}" data-nome="${nome}" onclick="apriDocumentoDaBtn(this)">👁 Visualizza</button>
           </div>`;
         }
       });
@@ -1115,6 +1111,12 @@ window.apriDocOperaio = async function(operaioId) {
   } catch(e) {
     body.innerHTML = `<div style="padding:12px;color:var(--red);font-size:12px;">Errore: ${e.message}</div>`;
   }
+};
+
+window.apriDocumentoDaBtn = function(btn) {
+  const url  = btn.getAttribute('data-url');
+  const nome = btn.getAttribute('data-nome');
+  apriDocumento(url, nome);
 };
 
 window.apriDocumento = function(url, nome) {
