@@ -296,12 +296,10 @@
             const bloccato     = isPassato || (isGiornoOggi && !sbloccato);
             const val          = r.straordinario || '';
             const ph           = isGiornoOggi && !sbloccato ? '🔒 dopo 17:30' : isPassato ? '🔒' : 'es. 1h';
-            return \`<input type="text" value="\${val}" placeholder="\${ph}"
-              style="width:80px;\${bloccato ? 'opacity:0.45;cursor:not-allowed;' : ''}"
-              \${bloccato ? 'disabled' : ''}
-              oninput="aggiornaRiga(\${g},'straordinario',this.value)"
-              onchange="aggiornaRiga(\${g},'straordinario',this.value)"
-              title="\${bloccato ? (isGiornoOggi ? 'Disponibile dopo le 17:30' : 'Giorno passato - non modificabile') : 'Ore straordinario'}"/>\`;
+            const dis          = bloccato ? 'disabled' : '';
+            const sty          = bloccato ? 'opacity:0.45;cursor:not-allowed;' : '';
+            const tit          = bloccato ? (isGiornoOggi ? 'Disponibile dopo le 17:30' : 'Giorno passato') : 'Ore straordinario';
+            return '<input type="text" value="' + val + '" placeholder="' + ph + '" style="width:80px;' + sty + '" ' + dis + ' oninput="aggiornaRiga(' + g + ',\'straordinario\',this.value)" onchange="aggiornaRiga(' + g + ',\'straordinario\',this.value)" title="' + tit + '"/>';
           })()}
         </td>
         <td class="totale" id="tot-${g}">${r.totale}</td>
