@@ -288,21 +288,20 @@
         <td><select onchange="aggiornaRiga(${g},'pausa',this.value)">${opzioniPausa(r.pausa)}</select></td>
         <td>
           ${(()=>{
-            const now = new Date();
-            const isOggiStrao = oggi.getFullYear()===viewYear && oggi.getMonth()===viewMonth && oggi.getDate()===g;
-            const dataGiorno = new Date(viewYear, viewMonth, g);
-            const passato = dataGiorno < new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate());
-            const oraSblocco = now.getHours() > 17 || (now.getHours() === 17 && now.getMinutes() >= 30);
-            // Bloccato se: giorno passato (qualunque sia il valore) OPPURE oggi prima delle 17:30
-            const bloccato = passato || (isOggiStrao && !oraSblocco);
-            const valoreEsistente = r.straordinario || '';
-            const placeholder = bloccato ? (isOggiStrao ? '🔒 dopo 17:30' : '🔒') : 'es. 1h';
-            return `<input type="text" value="${valoreEsistente}" placeholder="${placeholder}"
-              style="width:80px;${bloccato ? 'opacity:0.45;cursor:not-allowed;' : ''}"
-              ${bloccato ? 'disabled' : ''}
-              oninput="aggiornaRiga(${g},'straordinario',this.value)"
-              onchange="aggiornaRiga(${g},'straordinario',this.value)"
-              title="${bloccato ? (isOggiStrao ? 'Disponibile dopo le 17:30' : 'Non modificabile: giorno passato') : 'Ore straordinario'}"/>`;
+            const _ora   = oggi.getHours() * 60 + oggi.getMinutes();
+            const _17e30 = 17 * 60 + 30;
+            const isGiornoOggi = oggi.getFullYear()===viewYear && oggi.getMonth()===viewMonth && oggi.getDate()===g;
+            const isPassato    = !isGiornoOggi && (new Date(viewYear, viewMonth, g) < new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate()));
+            const sbloccato    = isGiornoOggi && (_ora >= _17e30);
+            const bloccato     = isPassato || (isGiornoOggi && !sbloccato);
+            const val          = r.straordinario || '';
+            const ph           = isGiornoOggi && !sbloccato ? '🔒 dopo 17:30' : isPassato ? '🔒' : 'es. 1h';
+            return \`<input type="text" value="\${val}" placeholder="\${ph}"
+              style="width:80px;\${bloccato ? 'opacity:0.45;cursor:not-allowed;' : ''}"
+              \${bloccato ? 'disabled' : ''}
+              oninput="aggiornaRiga(\${g},'straordinario',this.value)"
+              onchange="aggiornaRiga(\${g},'straordinario',this.value)"
+              title="\${bloccato ? (isGiornoOggi ? 'Disponibile dopo le 17:30' : 'Giorno passato - non modificabile') : 'Ore straordinario'}"/>\`;
           })()}
         </td>
         <td class="totale" id="tot-${g}">${r.totale}</td>
